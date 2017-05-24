@@ -382,6 +382,7 @@ public:
                           wxWANTS_CHARS | wxCLIP_CHILDREN,
                           "GridWindow")
     {
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
     }
 
 

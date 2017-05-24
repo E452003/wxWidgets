@@ -48,6 +48,7 @@
 #include "wx/renderer.h"
 #include "wx/headerctrl.h"
 #include "wx/hashset.h"
+#include "wx/dcbuffer.h"
 
 #include "wx/generic/gridsel.h"
 #include "wx/generic/gridctrl.h"
@@ -1729,7 +1730,7 @@ wxEND_EVENT_TABLE()
 
 void wxGridWindow::OnPaint( wxPaintEvent &WXUNUSED(event) )
 {
-    wxPaintDC dc( this );
+    wxAutoBufferedPaintDC  dc( this );
     m_owner->PrepareDC( dc );
     wxRegion reg = GetUpdateRegion();
     wxGridCellCoordsArray dirtyCells = m_owner->CalcCellsExposed( reg );
