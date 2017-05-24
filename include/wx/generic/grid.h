@@ -2013,8 +2013,11 @@ protected:
         wxGridCellAttr *attr;
     } m_attrCache;
 
+    // this function must be public...
+public:
     // invalidates the attribute cache
     void ClearAttrCache();
+protected:
 
     // adds an attribute to cache
     void CacheAttr(int row, int col, wxGridCellAttr *attr) const;
