@@ -116,15 +116,6 @@ CGColorRef wxMacCreateCGColor( const wxColour& col )
     return retval;
 }
 
-CTFontRef wxMacCreateCTFont( const wxFont& font )
-{
-#ifdef __WXMAC__
-    return wxCFRetain((CTFontRef) font.OSXGetCTFont());
-#else
-    return CTFontCreateWithName( wxCFStringRef( font.GetFaceName(), wxLocale::GetSystemEncoding() ) , font.GetPointSize() , NULL );
-#endif
-}
-
 // CGPattern wrapper class: always allocate on heap, never call destructor
 
 class wxMacCoreGraphicsPattern
@@ -809,14 +800,6 @@ wxMacCoreGraphicsBrushData::CreateGradientFunction(const wxGraphicsGradientStops
 // Font
 //
 
-#if wxOSX_USE_IPHONE
-
-extern UIFont* CreateUIFont( const wxFont& font );
-extern void DrawTextInContext( CGContextRef context, CGPoint where, UIFont *font, NSString* text );
-extern CGSize MeasureTextInContext( UIFont *font, NSString* text );
-
-#endif
-
 class wxMacCoreGraphicsFontData : public wxGraphicsObjectRefData
 {
 public:
@@ -824,6 +807,7 @@ public:
     ~wxMacCoreGraphicsFontData();
 
     CTFontRef OSXGetCTFont() const { return m_ctFont ; }
+    CFDictionaryRef OSXGetCTFontAttributes() const { return m_ctFontAttributes; }
     wxColour GetColour() const { return m_colour ; }
 
     bool GetUnderlined() const { return m_underlined ; }
@@ -837,8 +821,9 @@ private :
     bool m_underlined,
          m_strikethrough;
     wxCFRef< CTFontRef > m_ctFont;
+    wxCFRef< CFDictionaryRef > m_ctFontAttributes;
 #if wxOSX_USE_IPHONE
-    UIFont*  m_uiFont;
+    wxCFRef< WX_UIFont > m_uiFont;
 #endif
 };
 
@@ -848,18 +833,15 @@ wxMacCoreGraphicsFontData::wxMacCoreGraphicsFontData(wxGraphicsRenderer* rendere
     m_underlined = font.GetUnderlined();
     m_strikethrough = font.GetStrikethrough();
 
-    m_ctFont.reset( wxMacCreateCTFont( font ) );
+    m_ctFont.reset( wxCFRetain( font.OSXGetCTFont() ) );
+    m_ctFontAttributes.reset( wxCFRetain( font.OSXGetCTFontAttributes() ) );
 #if wxOSX_USE_IPHONE
-    m_uiFont = CreateUIFont(font);
-    wxMacCocoaRetain( m_uiFont );
+    m_uiFont.reset( wxCFRetain( font.OSXGetUIFont() ) );
 #endif
 }
 
 wxMacCoreGraphicsFontData::~wxMacCoreGraphicsFontData()
 {
-#if wxOSX_USE_IPHONE
-    wxMacCocoaRelease( m_uiFont );
-#endif
 }
 
 class wxMacCoreGraphicsBitmapData : public wxGraphicsBitmapData
@@ -1355,7 +1337,10 @@ public:
 
     // draws a path by first filling and then stroking
     virtual void DrawPath( const wxGraphicsPath &path, wxPolygonFillMode fillStyle = wxODDEVEN_RULE ) wxOVERRIDE;
-
+    
+    // paints a transparent rectangle (only useful for bitmaps or windows)
+    virtual void ClearRectangle(wxDouble x, wxDouble y, wxDouble w, wxDouble h) wxOVERRIDE;
+    
     virtual bool ShouldOffset() const wxOVERRIDE
     {
         if ( !m_enableOffset )
@@ -1408,6 +1393,7 @@ private:
     CGContextRef m_cgContext;
     WXWidget m_view;
     bool m_contextSynthesized;
+    CGAffineTransform m_initTransform;
     CGAffineTransform m_windowTransform;
     bool m_invisible;
 
@@ -1481,6 +1467,7 @@ wxMacCoreGraphicsContext::wxMacCoreGraphicsContext( wxGraphicsRenderer* renderer
     SetNativeContext(cgcontext);
     m_width = width;
     m_height = height;
+    m_initTransform = CGContextGetCTM(m_cgContext);
 }
 
 wxMacCoreGraphicsContext::wxMacCoreGraphicsContext( wxGraphicsRenderer* renderer, wxWindow* window ): wxGraphicsContext(renderer)
@@ -1517,6 +1504,7 @@ wxMacCoreGraphicsContext::wxMacCoreGraphicsContext( wxGraphicsRenderer* renderer
     m_windowTransform = CGAffineTransformScale( m_windowTransform , 1 , -1 );
     m_windowTransform = CGAffineTransformTranslate( m_windowTransform, originX, originY ) ;
 #endif
+    m_initTransform = m_windowTransform;
 }
 
 wxMacCoreGraphicsContext::wxMacCoreGraphicsContext(wxGraphicsRenderer* renderer) : wxGraphicsContext(renderer)
@@ -1921,8 +1909,6 @@ void wxMacCoreGraphicsContext::ResetClip()
 
 void wxMacCoreGraphicsContext::GetClipBox(wxDouble* x, wxDouble* y, wxDouble* w, wxDouble* h)
 {
-    // This function is not yet tested.
-    // TODO: Do the tests.
     CGRect r;
 
     if ( m_cgContext )
@@ -1938,6 +1924,11 @@ void wxMacCoreGraphicsContext::GetClipBox(wxDouble* x, wxDouble* y, wxDouble* w,
     // allow usage as measuring context
     // wxFAIL_MSG( "Needs a valid context for clipping" );
 #endif
+    }
+
+    if ( CGRectIsEmpty(r) )
+    {
+        r = CGRectZero;
     }
     CheckInvariants();
 
@@ -2220,21 +2211,10 @@ void wxMacCoreGraphicsContext::DoDrawText( const wxString &str, wxDouble x, wxDo
 
     wxMacCoreGraphicsFontData* fref = (wxMacCoreGraphicsFontData*)m_font.GetRefData();
     wxCFStringRef text(str, wxLocale::GetSystemEncoding() );
-    CTFontRef font = fref->OSXGetCTFont();
     CGColorRef col = wxMacCreateCGColor( fref->GetColour() );
-#if 0
-    // right now there's no way to get continuous underlines, only words, so we emulate it
-    CTUnderlineStyle ustyle = fref->GetUnderlined() ? kCTUnderlineStyleSingle : kCTUnderlineStyleNone ;
-    wxCFRef<CFNumberRef> underlined( CFNumberCreate(NULL, kCFNumberSInt32Type, &ustyle) );
-     CFStringRef keys[] = { kCTFontAttributeName , kCTForegroundColorAttributeName, kCTUnderlineStyleAttributeName };
-    CFTypeRef values[] = { font, col, underlined };
-#else
-    CFStringRef keys[] = { kCTFontAttributeName , kCTForegroundColorAttributeName };
-    CFTypeRef values[] = { font, col };
-#endif
-    wxCFRef<CFDictionaryRef> attributes( CFDictionaryCreate(kCFAllocatorDefault, (const void**) &keys, (const void**) &values,
-                                                    WXSIZEOF( keys ), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) );
-    wxCFRef<CFAttributedStringRef> attrtext( CFAttributedStringCreate(kCFAllocatorDefault, text, attributes) );
+    CTFontRef font = fref->OSXGetCTFont();
+
+    wxCFRef<CFAttributedStringRef> attrtext( CFAttributedStringCreate(kCFAllocatorDefault, text, fref->OSXGetCTFontAttributes()) );
     wxCFRef<CTLineRef> line( CTLineCreateWithAttributedString(attrtext) );
 
     y += CTFontGetAscent(font);
@@ -2246,6 +2226,7 @@ void wxMacCoreGraphicsContext::DoDrawText( const wxString &str, wxDouble x, wxDo
     CGContextScaleCTM(m_cgContext, 1, -1);
     CGContextSetTextMatrix(m_cgContext, CGAffineTransformIdentity);
 
+    CGContextSetFillColorWithColor( m_cgContext, col );
     CTLineDraw( line, m_cgContext );
 
     if ( fref->GetUnderlined() ) {
@@ -2316,14 +2297,10 @@ void wxMacCoreGraphicsContext::GetTextExtent( const wxString &str, wxDouble *wid
         strToMeasure = wxS(" ");
 
     wxMacCoreGraphicsFontData* fref = (wxMacCoreGraphicsFontData*)m_font.GetRefData();
-    CTFontRef font = fref->OSXGetCTFont();
 
     wxCFStringRef text(strToMeasure, wxLocale::GetSystemEncoding() );
-    CFStringRef keys[] = { kCTFontAttributeName  };
-    CFTypeRef values[] = { font };
-    wxCFRef<CFDictionaryRef> attributes( CFDictionaryCreate(kCFAllocatorDefault, (const void**) &keys, (const void**) &values,
-                                                            WXSIZEOF( keys ), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) );
-    wxCFRef<CFAttributedStringRef> attrtext( CFAttributedStringCreate(kCFAllocatorDefault, text, attributes) );
+    
+    wxCFRef<CFAttributedStringRef> attrtext( CFAttributedStringCreate(kCFAllocatorDefault, text, fref->OSXGetCTFontAttributes() ) );
     wxCFRef<CTLineRef> line( CTLineCreateWithAttributedString(attrtext) );
 
     CGFloat a, d, l, w;
@@ -2336,7 +2313,6 @@ void wxMacCoreGraphicsContext::GetTextExtent( const wxString &str, wxDouble *wid
         if ( height )
             *height = a+d+l;
     }
-
     if ( descent )
         *descent = d;
     if ( externalLeading )
@@ -2355,14 +2331,9 @@ void wxMacCoreGraphicsContext::GetPartialTextExtents(const wxString& text, wxArr
         return;
 
     wxMacCoreGraphicsFontData* fref = (wxMacCoreGraphicsFontData*)m_font.GetRefData();
-    CTFontRef font = fref->OSXGetCTFont();
 
     wxCFStringRef t(text, wxLocale::GetSystemEncoding() );
-    CFStringRef keys[] = { kCTFontAttributeName  };
-    CFTypeRef values[] = { font };
-    wxCFRef<CFDictionaryRef> attributes( CFDictionaryCreate(kCFAllocatorDefault, (const void**) &keys, (const void**) &values,
-                                                            WXSIZEOF( keys ), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) );
-    wxCFRef<CFAttributedStringRef> attrtext( CFAttributedStringCreate(kCFAllocatorDefault, t, attributes) );
+    wxCFRef<CFAttributedStringRef> attrtext( CFAttributedStringCreate(kCFAllocatorDefault, t, fref->OSXGetCTFontAttributes()) );
     wxCFRef<CTLineRef> line( CTLineCreateWithAttributedString(attrtext) );
 
     widths.reserve(text.length());
@@ -2386,6 +2357,14 @@ void * wxMacCoreGraphicsContext::GetNativeContext()
     return m_cgContext;
 }
 
+void wxMacCoreGraphicsContext::ClearRectangle( wxDouble x, wxDouble y, wxDouble w, wxDouble h )
+{
+    if (!EnsureIsValid())
+        return;
+    
+    CGRect rect = CGRectMake( (CGFloat) x , (CGFloat) y , (CGFloat) w , (CGFloat) h );
+    CGContextClearRect(m_cgContext, rect);
+}
 
 void wxMacCoreGraphicsContext::DrawRectangle( wxDouble x, wxDouble y, wxDouble w, wxDouble h )
 {
@@ -2430,16 +2409,18 @@ void wxMacCoreGraphicsContext::ConcatTransform( const wxGraphicsMatrix& matrix )
 void wxMacCoreGraphicsContext::SetTransform( const wxGraphicsMatrix& matrix )
 {
     CheckInvariants();
+    CGAffineTransform t = *((CGAffineTransform*)matrix.GetNativeMatrix());
     if ( m_cgContext )
     {
         CGAffineTransform transform = CGContextGetCTM( m_cgContext );
         transform = CGAffineTransformInvert( transform ) ;
         CGContextConcatCTM( m_cgContext, transform);
-        CGContextConcatCTM( m_cgContext, *(CGAffineTransform*) matrix.GetNativeMatrix());
+        CGContextConcatCTM(m_cgContext, m_initTransform);
+        CGContextConcatCTM(m_cgContext, t);
     }
     else
     {
-        m_windowTransform = *(CGAffineTransform*) matrix.GetNativeMatrix();
+        m_windowTransform = CGAffineTransformConcat(t, m_initTransform);
     }
     CheckInvariants();
 }
@@ -2448,8 +2429,21 @@ void wxMacCoreGraphicsContext::SetTransform( const wxGraphicsMatrix& matrix )
 wxGraphicsMatrix wxMacCoreGraphicsContext::GetTransform() const
 {
     wxGraphicsMatrix m = CreateMatrix();
-    *((CGAffineTransform*) m.GetNativeMatrix()) = ( m_cgContext == NULL ? m_windowTransform :
-        CGContextGetCTM( m_cgContext ));
+    CGAffineTransform* transformMatrix = (CGAffineTransform*)m.GetNativeMatrix();
+
+    if ( m_cgContext )
+    {
+        *transformMatrix = CGContextGetCTM(m_cgContext);
+    }
+    else
+    {
+        *transformMatrix = m_windowTransform;
+    }
+    // Don't expose internal transformations.
+    CGAffineTransform initTransformInv = m_initTransform;
+    initTransformInv = CGAffineTransformInvert(initTransformInv);
+    *transformMatrix = CGAffineTransformConcat(*transformMatrix, initTransformInv);
+
     return m;
 }
 

@@ -936,7 +936,7 @@ bool wxGenericDirCtrl::ExpandPath(const wxString& path)
         {
             data = GetItemData(childId);
 
-            if (data && data->m_path != wxEmptyString && !data->m_isDir)
+            if (data && !data->m_path.empty() && !data->m_isDir)
             {
                 m_treeCtrl->SelectItem(childId);
                 m_treeCtrl->EnsureVisible(childId);
@@ -1278,14 +1278,6 @@ bool wxDirFilterListCtrl::Create(wxGenericDirCtrl* parent,
                                  long style)
 {
     m_dirCtrl = parent;
-
-    // by default our border style is determined by the style of our parent
-    if ( !(style & wxBORDER_MASK) )
-    {
-        style |= parent->HasFlag(wxDIRCTRL_3D_INTERNAL) ? wxBORDER_SUNKEN
-                                                        : wxBORDER_NONE;
-    }
-
     return wxChoice::Create(parent, treeid, pos, size, 0, NULL, style);
 }
 

@@ -55,6 +55,9 @@ Changes in behaviour which may result in build errors
 
 - WXWIN_OS_DESCRIPTION doesn't exist any longer, use wxGetOsDescription().
 
+- Never documented and not always available private wxGetClipboardData()
+  function now doesn't exist at all any more in wxMSW, use wxClipboard instead.
+
 
 3.1.1: (not released yet)
 ----------------------------
@@ -64,6 +67,9 @@ INCOMPATIBLE CHANGES SINCE 3.1.0:
 - wxListCtrl::HasCheckboxes() and EnableCheckboxes(), which were added in
   3.1.0, have been renamed to HasCheckBoxes and EnableCheckBoxes respectively
   for consistency with wxCheckBox naming.
+
+- The enum value wxTASKBAR_JUMP_LIST_DESTIONATION, which was added in 3.1.0,
+  contains a typo and has been renamed to wxTASKBAR_JUMP_LIST_DESTINATION.
 
 
 All:
@@ -112,7 +118,7 @@ All (GUI):
 - Add wxSYS_CARET_{ON,OFF,TIMEOUT}_MSEC system settings (brawer).
 - Add wxGraphicsContext::GetClipBox().
 - Fix wxGCDC::Clear() for rotated graphics context.
-- Fix wxGCDC::GetClippingBox() for transformed wxDC (MSW, GTK+).
+- Fix wxGCDC::GetClippingBox() for transformed wxDC.
 - Add support for affine transformation matrix in wxGCDC.
 - Add wxGraphicsContext::Flush() for Cairo renderer.
 - Add wxStyledTextEvent::GetListCompletionMethod() (NewPagodi).
@@ -135,6 +141,9 @@ All (GUI):
 - Extend wxStyledTextCtrl::FindText() to return end position of matched
   text (NewPagodi).
 - Fix adding/removing items to/from wxRearrangeList.
+- Handle wxST_ELLIPSIZE_XXX styles in wxStaticText XRC handler (tm).
+- Add support for bitmaps to wxToggleButton XRC handler (tm).
+- Fix wxGCDC::SetDeviceClippingRegion().
 
 wxGTK:
 
@@ -150,6 +159,7 @@ wxGTK:
 - Add support for affine transformation matrix in wxDC (GTK+ 3).
 - Fix wxMemoryDC::Blit() with itself as source (GTK+ 3).
 - Fix displaying labels of wxRadioBox items.
+- Add a native implementation for clearing bitmap/window wxGraphicsContexts
 
 wxMSW:
 
@@ -199,6 +209,11 @@ wxOSX:
 - Don't allow interacting with disabled wxSlider (Andreas Falkenhahn).
 - Fix setting alignment in wxTextCtrl with wxTE_DONTWRAP (Andreas Falkenhahn).
 - Allow pasting using Cmd+V in wxTextCtrl with wxTE_PASSWORD style.
+- Update font code to use toll-free bridges from CTFontRef to NSFont or UIFont
+- Add a native implementation for clearing bitmap/window wxGraphicsContexts
+- wxiOS now needs a minimum of iOS 9 for deployment
+- Fix handling CTM in wxGraphicsContext::SeTransform and GetTransform().
+- Allow turning on/off opacity selector in wxColourDialog.
 
 Unix:
 
@@ -315,6 +330,7 @@ All (GUI):
 - Add support for the events from multimedia keys (Jens Göpfert).
 - Allow suppressing warnings from wxImage::LoadFile().
 - Allow customizing wxRibbon highlight colours (wxBen).
+- Enable selecting opacity in generic wxColourPicker.
 
 wxGTK:
 
