@@ -1252,26 +1252,12 @@ outlineView:(NSOutlineView*)outlineView
 // wxTextFieldCell
 // ============================================================================
 
-#ifndef _LP64
-    // The code below doesn't compile in 32 bits failing with
-    //
-    //      error: instance variables may not be placed in class extension
-    //
-    // Until this can be fixed, disable it to at least fix compilation.
-#else
-@interface wxTextFieldCell ()
-{
-    int _wxAlignment;
-    BOOL _adjustRect;
-}
-@end
-
 @implementation wxTextFieldCell
 
 - (void)setWXAlignment:(int)alignment
 {
-    _wxAlignment = alignment;
-    _adjustRect = (alignment & (wxALIGN_CENTRE_VERTICAL | wxALIGN_BOTTOM)) != 0;
+    alignment_ = alignment;
+    adjustRect_ = (alignment & (wxALIGN_CENTRE_VERTICAL | wxALIGN_BOTTOM)) != 0;
 }
 
 // These three overrides implement vertical alignment of text cells.
@@ -1283,7 +1269,7 @@ outlineView:(NSOutlineView*)outlineView
     // Get the parent's idea of where we should draw
     NSRect r = [super drawingRectForBounds:theRect];
 
-    if (!_adjustRect)
+    if (!adjustRect_)
         return r;
     if (theRect.size.height <= MINIMUM_NATIVE_ROW_HEIGHT)
         return r;  // don't mess with default-sized rows as they are centered
@@ -1291,12 +1277,12 @@ outlineView:(NSOutlineView*)outlineView
     NSSize bestSize = [self cellSizeForBounds:theRect];
     if (bestSize.height < r.size.height)
     {
-        if (_wxAlignment & wxALIGN_CENTER_VERTICAL)
+        if (alignment_ & wxALIGN_CENTER_VERTICAL)
         {
             r.origin.y += int(r.size.height - bestSize.height) / 2;
             r.size.height = bestSize.height;
         }
-        else if (_wxAlignment & wxALIGN_BOTTOM)
+        else if (alignment_ & wxALIGN_BOTTOM)
         {
             r.origin.y += r.size.height - bestSize.height;
             r.size.height = bestSize.height;
@@ -1308,30 +1294,29 @@ outlineView:(NSOutlineView*)outlineView
 
 - (void)selectWithFrame:(NSRect)aRect inView:(NSView *)controlView editor:(NSText *)textObj delegate:(id)anObject start:(NSInteger)selStart length:(NSInteger)selLength
 {
-    BOOL oldAdjustRect = _adjustRect;
+    BOOL oldAdjustRect = adjustRect_;
     if (oldAdjustRect)
     {
         aRect = [self drawingRectForBounds:aRect];
-        _adjustRect = NO;
+        adjustRect_ = NO;
     }
     [super selectWithFrame:aRect inView:controlView editor:textObj delegate:anObject start:selStart length:selLength];
-    _adjustRect = oldAdjustRect;
+    adjustRect_ = oldAdjustRect;
 }
 
 - (void)editWithFrame:(NSRect)aRect inView:(NSView *)controlView editor:(NSText *)textObj delegate:(id)anObject event:(NSEvent *)theEvent
 {
-    BOOL oldAdjustRect = _adjustRect;
+    BOOL oldAdjustRect = adjustRect_;
     if (oldAdjustRect)
     {
         aRect = [self drawingRectForBounds:aRect];
-        _adjustRect = NO;
+        adjustRect_ = NO;
     }
     [super editWithFrame:aRect inView:controlView editor:textObj delegate:anObject event:theEvent];
-    _adjustRect = oldAdjustRect;
+    adjustRect_ = oldAdjustRect;
 }
 
 @end
-#endif // 32/64 bits
 
 
 // ============================================================================
@@ -2104,6 +2089,8 @@ bool wxCocoaDataViewControl::ClearColumns()
     // columns cannot be deleted if there is an outline column in the view;
     // therefore, the whole view is deleted and newly constructed:
     RemoveAssociation(m_OutlineView); // undo InitOutlineView's association
+
+    [m_OutlineView removeFromSuperviewWithoutNeedingDisplay];
     [m_OutlineView release];
     m_OutlineView = [[wxCocoaOutlineView alloc] init];
     [((NSScrollView*) GetWXWidget()) setDocumentView:m_OutlineView];
@@ -2324,6 +2311,27 @@ void wxCocoaDataViewControl::DoExpand(const wxDataViewItem& item)
 unsigned int wxCocoaDataViewControl::GetCount() const
 {
     return [m_OutlineView numberOfRows];
+}
+
+int wxCocoaDataViewControl::GetCountPerPage() const
+{
+    NSScrollView *scrollView = [m_OutlineView enclosingScrollView];
+    NSTableHeaderView *headerView = [m_OutlineView headerView];
+    NSRect visibleRect = scrollView.contentView.visibleRect;
+    if ( headerView )
+        visibleRect.size.height -= headerView.visibleRect.size.height;
+    return (int) (visibleRect.size.height / [m_OutlineView rowHeight]);
+}
+
+wxDataViewItem wxCocoaDataViewControl::GetTopItem() const
+{
+    NSScrollView *scrollView = [m_OutlineView enclosingScrollView];
+    NSTableHeaderView *headerView = [m_OutlineView headerView];
+    NSRect visibleRect = scrollView.contentView.visibleRect;
+    if ( headerView )
+        visibleRect.origin.y += headerView.visibleRect.size.height;
+    NSRange range = [m_OutlineView rowsInRect:visibleRect];
+    return wxDataViewItem([[m_OutlineView itemAtRow:range.location] pointer]);
 }
 
 wxRect wxCocoaDataViewControl::GetRectangle(const wxDataViewItem& item, const wxDataViewColumn *columnPtr)
@@ -2553,7 +2561,7 @@ void wxCocoaDataViewControl::SetRowHeight(int height)
 int wxCocoaDataViewControl::GetDefaultRowHeight() const
 {
     // Custom setup of NSLayoutManager is necessary to match NSTableView sizing.
-    // See http://stackoverflow.com/questions/17095927/dynamically-changing-row-height-after-font-size-of-entire-nstableview-nsoutlin
+    // See https://stackoverflow.com/questions/17095927/dynamically-changing-row-height-after-font-size-of-entire-nstableview-nsoutlin
     NSLayoutManager *lm = [[NSLayoutManager alloc] init];
     [lm setTypesetterBehavior:NSTypesetterBehavior_10_2_WithCompatibility];
     [lm setUsesScreenFonts:NO];
@@ -2763,10 +2771,8 @@ void wxDataViewRenderer::OSXUpdateAlignment()
     int align = GetEffectiveAlignment();
     NSCell *cell = GetNativeData()->GetColumnCell();
     [cell setAlignment:ConvertToNativeHorizontalTextAlignment(align)];
-#ifdef _LP64
     if ([cell respondsToSelector:@selector(setWXAlignment:)])
         [(wxTextFieldCell*)cell setWXAlignment:align];
-#endif // _LP64
 }
 
 void wxDataViewRenderer::SetMode(wxDataViewCellMode mode)
