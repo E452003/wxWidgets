@@ -1618,6 +1618,7 @@ wxBEGIN_EVENT_TABLE( wxGridRowLabelWindow, wxGridSubwindow )
     EVT_PAINT( wxGridRowLabelWindow::OnPaint )
     EVT_MOUSEWHEEL( wxGridRowLabelWindow::OnMouseWheel )
     EVT_MOUSE_EVENTS( wxGridRowLabelWindow::OnMouseEvent )
+    EVT_ERASE_BACKGROUND( wxGridRowLabelWindow::OnEraseBackground )
 wxEND_EVENT_TABLE()
 
 void wxGridRowLabelWindow::OnPaint( wxPaintEvent& WXUNUSED(event) )
@@ -1650,12 +1651,17 @@ void wxGridRowLabelWindow::OnMouseWheel( wxMouseEvent& event )
         event.Skip();
 }
 
+void wxGridRowLabelWindow::OnEraseBackground( wxEraseEvent& WXUNUSED(event) )
+{
+}
+
 //////////////////////////////////////////////////////////////////////
 
 wxBEGIN_EVENT_TABLE( wxGridColLabelWindow, wxGridSubwindow )
     EVT_PAINT( wxGridColLabelWindow::OnPaint )
     EVT_MOUSEWHEEL( wxGridColLabelWindow::OnMouseWheel )
     EVT_MOUSE_EVENTS( wxGridColLabelWindow::OnMouseEvent )
+    EVT_ERASE_BACKGROUND( wxGridColLabelWindow::OnEraseBackground )
 wxEND_EVENT_TABLE()
 
 void wxGridColLabelWindow::OnPaint( wxPaintEvent& WXUNUSED(event) )
@@ -1686,6 +1692,10 @@ void wxGridColLabelWindow::OnMouseWheel( wxMouseEvent& event )
 {
     if (!m_owner->GetEventHandler()->ProcessEvent( event ))
         event.Skip();
+}
+
+void wxGridColLabelWindow::OnEraseBackground( wxEraseEvent& WXUNUSED(event) )
+{
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -5850,7 +5860,12 @@ void wxGrid::DrawRowLabel( wxDC& dc, int row )
                                 (gs_defaultHeaderRenderers.rowRenderer);
 
     wxRect rect(0, GetRowTop(row), m_rowLabelWidth, GetRowHeight(row));
+
+    {
+    wxDCBrushChanger setBrush(dc, m_rowLabelWin->GetBackgroundColour());
+    dc.DrawRectangle(rect);
     rend.DrawBorder(*this, dc, rect);
+   }
 
     int hAlign, vAlign;
     GetRowLabelAlignment(&hAlign, &vAlign);

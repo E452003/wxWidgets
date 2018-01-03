@@ -332,6 +332,7 @@ private:
     void OnPaint( wxPaintEvent& event );
     void OnMouseEvent( wxMouseEvent& event );
     void OnMouseWheel( wxMouseEvent& event );
+    void OnEraseBackground( wxEraseEvent& );
 
     wxDECLARE_EVENT_TABLE();
     wxDECLARE_NO_COPY_CLASS(wxGridRowLabelWindow);
@@ -351,6 +352,7 @@ private:
     void OnPaint( wxPaintEvent& event );
     void OnMouseEvent( wxMouseEvent& event );
     void OnMouseWheel( wxMouseEvent& event );
+    void OnEraseBackground( wxEraseEvent& );
 
     wxDECLARE_EVENT_TABLE();
     wxDECLARE_NO_COPY_CLASS(wxGridColLabelWindow);
