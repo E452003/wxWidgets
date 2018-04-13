@@ -202,8 +202,8 @@ function(wx_set_target_properties target_name is_base)
             PUBLIC ${wxTOOLKIT_INCLUDE_DIRS})
     endif()
 
-    if (WXMSW)
-        set(WXMSW_LIBRARIES
+    if (WIN32)
+        set(WIN32_LIBRARIES
             kernel32
             user32
             gdi32
@@ -225,7 +225,7 @@ function(wx_set_target_properties target_name is_base)
             uxtheme
         )
         target_link_libraries(${target_name}
-            PUBLIC ${WXMSW_LIBRARIES})
+            PUBLIC ${WIN32_LIBRARIES})
     endif()
 
     if(wxTOOLKIT_LIBRARIES)
@@ -378,7 +378,7 @@ macro(wx_lib_include_directories name)
         list(APPEND wxMONO_INCLUDE_DIRS_PUBLIC ${_LIB_INCLUDE_DIRS_PUBLIC})
         list(APPEND wxMONO_INCLUDE_DIRS_PRIVATE ${_LIB_INCLUDE_DIRS_PRIVATE})
     else()
-        target_include_directories(${name};${ARGN})
+        target_include_directories(${name};BEFORE;${ARGN})
     endif()
 endmacro()
 
