@@ -1618,17 +1618,26 @@ wxBEGIN_EVENT_TABLE( wxGridRowLabelWindow, wxGridSubwindow )
     EVT_PAINT( wxGridRowLabelWindow::OnPaint )
     EVT_MOUSEWHEEL( wxGridRowLabelWindow::OnMouseWheel )
     EVT_MOUSE_EVENTS( wxGridRowLabelWindow::OnMouseEvent )
+    EVT_ERASE_BACKGROUND( wxGridRowLabelWindow::OnEraseBackGround )
 wxEND_EVENT_TABLE()
 
 void wxGridRowLabelWindow::OnPaint( wxPaintEvent& WXUNUSED(event) )
 {
-    wxPaintDC dc(this);
+    wxAutoBufferedPaintDC  dc(this);
 
     // NO - don't do this because it will set both the x and y origin
     // coords to match the parent scrolled window and we just want to
     // set the y coord  - MB
     //
     // m_owner->PrepareDC( dc );
+
+    const wxSize size = GetClientSize();
+
+    {
+        wxDCBrushChanger setBrush(dc, GetBackgroundColour());
+        wxDCPenChanger setPen(dc, *wxTRANSPARENT_PEN);
+        dc.DrawRectangle(size);
+    }
 
     int x, y;
     m_owner->CalcUnscrolledPosition( 0, 0, &x, &y );
@@ -1650,23 +1659,36 @@ void wxGridRowLabelWindow::OnMouseWheel( wxMouseEvent& event )
         event.Skip();
 }
 
+void wxGridRowLabelWindow::OnEraseBackGround(wxEraseEvent& WXUNUSED(event))
+{
+}
+
 //////////////////////////////////////////////////////////////////////
 
 wxBEGIN_EVENT_TABLE( wxGridColLabelWindow, wxGridSubwindow )
     EVT_PAINT( wxGridColLabelWindow::OnPaint )
     EVT_MOUSEWHEEL( wxGridColLabelWindow::OnMouseWheel )
     EVT_MOUSE_EVENTS( wxGridColLabelWindow::OnMouseEvent )
+    EVT_ERASE_BACKGROUND( wxGridColLabelWindow::OnEraseBackGround )
 wxEND_EVENT_TABLE()
 
 void wxGridColLabelWindow::OnPaint( wxPaintEvent& WXUNUSED(event) )
 {
-    wxPaintDC dc(this);
+    wxAutoBufferedPaintDC  dc(this);
 
     // NO - don't do this because it will set both the x and y origin
     // coords to match the parent scrolled window and we just want to
     // set the x coord  - MB
     //
     // m_owner->PrepareDC( dc );
+
+    const wxSize size = GetClientSize();
+
+    {
+        wxDCBrushChanger setBrush(dc, GetBackgroundColour());
+        wxDCPenChanger setPen(dc, *wxTRANSPARENT_PEN);
+        dc.DrawRectangle(size);
+    }
 
     int x, y;
     m_owner->CalcUnscrolledPosition( 0, 0, &x, &y );
@@ -1688,17 +1710,30 @@ void wxGridColLabelWindow::OnMouseWheel( wxMouseEvent& event )
         event.Skip();
 }
 
+void wxGridColLabelWindow::OnEraseBackGround(wxEraseEvent& WXUNUSED(event))
+{
+}
+
 //////////////////////////////////////////////////////////////////////
 
 wxBEGIN_EVENT_TABLE( wxGridCornerLabelWindow, wxGridSubwindow )
     EVT_MOUSEWHEEL( wxGridCornerLabelWindow::OnMouseWheel )
     EVT_MOUSE_EVENTS( wxGridCornerLabelWindow::OnMouseEvent )
     EVT_PAINT( wxGridCornerLabelWindow::OnPaint )
+    EVT_ERASE_BACKGROUND(wxGridCornerLabelWindow::OnEraseBackGround )
 wxEND_EVENT_TABLE()
 
 void wxGridCornerLabelWindow::OnPaint( wxPaintEvent& WXUNUSED(event) )
 {
-    wxPaintDC dc(this);
+    wxAutoBufferedPaintDC  dc(this);
+
+    const wxSize size = GetClientSize();
+
+    {
+        wxDCBrushChanger setBrush(dc, GetBackgroundColour());
+        wxDCPenChanger setPen(dc, *wxTRANSPARENT_PEN);
+        dc.DrawRectangle(size);
+    }
 
     m_owner->DrawCornerLabel(dc);
 }
@@ -1712,6 +1747,10 @@ void wxGridCornerLabelWindow::OnMouseWheel( wxMouseEvent& event )
 {
     if (!m_owner->GetEventHandler()->ProcessEvent(event))
         event.Skip();
+}
+
+void wxGridCornerLabelWindow::OnEraseBackGround(wxEraseEvent& WXUNUSED(event))
+{
 }
 
 //////////////////////////////////////////////////////////////////////

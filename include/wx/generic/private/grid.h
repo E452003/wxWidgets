@@ -325,6 +325,7 @@ public:
     wxGridRowLabelWindow(wxGrid *parent)
       : wxGridSubwindow(parent)
     {
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
     }
 
 
@@ -332,6 +333,7 @@ private:
     void OnPaint( wxPaintEvent& event );
     void OnMouseEvent( wxMouseEvent& event );
     void OnMouseWheel( wxMouseEvent& event );
+    void OnEraseBackGround( wxEraseEvent& event );
 
     wxDECLARE_EVENT_TABLE();
     wxDECLARE_NO_COPY_CLASS(wxGridRowLabelWindow);
@@ -344,6 +346,7 @@ public:
     wxGridColLabelWindow(wxGrid *parent)
         : wxGridSubwindow(parent)
     {
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
     }
 
 
@@ -351,6 +354,7 @@ private:
     void OnPaint( wxPaintEvent& event );
     void OnMouseEvent( wxMouseEvent& event );
     void OnMouseWheel( wxMouseEvent& event );
+    void OnEraseBackGround(wxEraseEvent& event);
 
     wxDECLARE_EVENT_TABLE();
     wxDECLARE_NO_COPY_CLASS(wxGridColLabelWindow);
@@ -363,12 +367,14 @@ public:
     wxGridCornerLabelWindow(wxGrid *parent)
         : wxGridSubwindow(parent)
     {
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
     }
 
 private:
     void OnMouseEvent( wxMouseEvent& event );
     void OnMouseWheel( wxMouseEvent& event );
     void OnPaint( wxPaintEvent& event );
+    void OnEraseBackGround(wxEraseEvent& event);
 
     wxDECLARE_EVENT_TABLE();
     wxDECLARE_NO_COPY_CLASS(wxGridCornerLabelWindow);
