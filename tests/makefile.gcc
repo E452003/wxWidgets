@@ -164,6 +164,7 @@ TEST_GUI_OBJECTS =  \
 	$(OBJS)\test_gui_boundingbox.o \
 	$(OBJS)\test_gui_clippingbox.o \
 	$(OBJS)\test_gui_graphmatrix.o \
+	$(OBJS)\test_gui_graphpath.o \
 	$(OBJS)\test_gui_config.o \
 	$(OBJS)\test_gui_bitmapcomboboxtest.o \
 	$(OBJS)\test_gui_bitmaptogglebuttontest.o \
@@ -224,6 +225,7 @@ TEST_GUI_OBJECTS =  \
 	$(OBJS)\test_gui_rawbmp.o \
 	$(OBJS)\test_gui_htmlparser.o \
 	$(OBJS)\test_gui_htmlwindow.o \
+	$(OBJS)\test_gui_htmprint.o \
 	$(OBJS)\test_gui_accelentry.o \
 	$(OBJS)\test_gui_menu.o \
 	$(OBJS)\test_gui_guifuncs.o \
@@ -847,6 +849,9 @@ $(OBJS)\test_gui_clippingbox.o: ./graphics/clippingbox.cpp
 $(OBJS)\test_gui_graphmatrix.o: ./graphics/graphmatrix.cpp
 	$(CXX) -c -o $@ $(TEST_GUI_CXXFLAGS) $(CPPDEPS) $<
 
+$(OBJS)\test_gui_graphpath.o: ./graphics/graphpath.cpp
+	$(CXX) -c -o $@ $(TEST_GUI_CXXFLAGS) $(CPPDEPS) $<
+
 $(OBJS)\test_gui_config.o: ./config/config.cpp
 	$(CXX) -c -o $@ $(TEST_GUI_CXXFLAGS) $(CPPDEPS) $<
 
@@ -1025,6 +1030,9 @@ $(OBJS)\test_gui_htmlparser.o: ./html/htmlparser.cpp
 	$(CXX) -c -o $@ $(TEST_GUI_CXXFLAGS) $(CPPDEPS) $<
 
 $(OBJS)\test_gui_htmlwindow.o: ./html/htmlwindow.cpp
+	$(CXX) -c -o $@ $(TEST_GUI_CXXFLAGS) $(CPPDEPS) $<
+
+$(OBJS)\test_gui_htmprint.o: ./html/htmprint.cpp
 	$(CXX) -c -o $@ $(TEST_GUI_CXXFLAGS) $(CPPDEPS) $<
 
 $(OBJS)\test_gui_accelentry.o: ./menu/accelentry.cpp

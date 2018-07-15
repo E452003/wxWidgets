@@ -419,6 +419,9 @@
 				RelativePath=".\graphics\graphmatrix.cpp">
 			</File>
 			<File
+				RelativePath=".\graphics\graphpath.cpp">
+			</File>
+			<File
 				RelativePath=".\sizers\gridsizer.cpp">
 			</File>
 			<File
@@ -438,6 +441,9 @@
 			</File>
 			<File
 				RelativePath=".\html\htmlwindow.cpp">
+			</File>
+			<File
+				RelativePath=".\html\htmprint.cpp">
 			</File>
 			<File
 				RelativePath=".\controls\hyperlinkctrltest.cpp">

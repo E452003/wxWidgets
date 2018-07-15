@@ -381,8 +381,6 @@ bool WidgetsApp::OnInit()
 WidgetsFrame::WidgetsFrame(const wxString& title)
             : wxFrame(NULL, wxID_ANY, title)
 {
-    const bool sizeSet = wxPersistentRegisterAndRestore(this, "Main");
-
     // set the frame icon
     SetIcon(wxICON(sample));
 
@@ -514,6 +512,8 @@ WidgetsFrame::WidgetsFrame(const wxString& title)
 
     m_panel->SetSizer(sizerTop);
 
+    const bool sizeSet = wxPersistentRegisterAndRestore(this, "Main");
+
     const wxSize sizeMin = m_panel->GetBestSize();
     if ( !sizeSet )
         SetClientSize(sizeMin);
@@ -628,9 +628,7 @@ void WidgetsFrame::InitBook()
         }
     }
 
-    Connect( wxID_ANY,
-             wxEVT_COMMAND_WIDGETS_PAGE_CHANGED,
-             wxWidgetsbookEventHandler(WidgetsFrame::OnPageChanged) );
+    Bind(wxEVT_COMMAND_WIDGETS_PAGE_CHANGED, &WidgetsFrame::OnPageChanged, this);
 
     const bool pageSet = wxPersistentRegisterAndRestore(m_book);
 

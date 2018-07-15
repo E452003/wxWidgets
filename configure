@@ -3991,7 +3991,7 @@ case "${host}" in
 
   ;;
 
-  *-*-cygwin* | *-*-mingw32* )
+  *-*-cygwin* | *-*-mingw32* | *-*-mingw64* )
                 PROGRAM_EXT=".exe"
     DEFAULT_DEFAULT_wxUSE_MSW=1
   ;;
@@ -27002,6 +27002,20 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
 
     if test "$wxUSE_QT" = 1; then
+        TOOLKIT=QT
+        GUIDIST=QT_DIST
+        TOOLKIT_DIR="qt"
+
+        if test -n "$QT5_CUSTOM_DIR" ; then
+                        TOOLKIT_INCLUDE="${TOOLKIT_INCLUDE} -I${QT5_CUSTOM_DIR}/include"
+            GUI_TK_LIBRARY="${GUI_TK_LIBRARY} -L${QT5_CUSTOM_DIR}/lib \
+                            -lQt5Core -lQt5Widgets -lQt5Gui -lQt5OpenGL -lQt5Test \
+                            -Wl,-rpath,${QT5_CUSTOM_DIR}/lib"
+
+        elif test -z "$PKG_CONFIG" ; then
+            as_fn_error $? "specify QT5_CUSTOM_DIR or make sure pkg-config is available to search for Qt5 libraries" "$LINENO" 5
+
+        else
 
 pkg_failed=no
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for QT5" >&5
@@ -27062,12 +27076,12 @@ fi
 	echo "$QT5_PKG_ERRORS" >&5
 
 
-                as_fn_error $? "Qt5 libraries are not available" "$LINENO" 5
+                    as_fn_error $? "Qt5 libraries are not available" "$LINENO" 5
 
 
 elif test $pkg_failed = untried; then
 
-                as_fn_error $? "Qt5 libraries are not available" "$LINENO" 5
+                    as_fn_error $? "Qt5 libraries are not available" "$LINENO" 5
 
 
 else
@@ -27076,9 +27090,6 @@ else
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
-                TOOLKIT=QT
-                GUIDIST=QT_DIST
-                TOOLKIT_DIR="qt"
                 TOOLKIT_INCLUDE="${TOOLKIT_INCLUDE} ${QT5_CFLAGS}"
                 GUI_TK_LIBRARY="${GUI_TK_LIBRARY} ${QT5_LIBS}"
                 if `pkg-config --variable qt_config Qt5Core | grep "reduce_relocations" >/dev/null`; then
@@ -27087,6 +27098,7 @@ $as_echo "yes" >&6; }
                 fi
 
 fi
+        fi
     fi
         TOOLKIT_DIR=`echo ${TOOLKIT} | tr '[A-Z]' '[a-z]'`
 
@@ -29855,7 +29867,7 @@ EOF
                                         HEADER_PAD_OPTION="-headerpad_max_install_names"
       ;;
 
-      *-*-cygwin* | *-*-mingw32* )
+      *-*-cygwin* | *-*-mingw32* | *-*-mingw64* )
         ;;
 
       *-*-hpux* )
@@ -34126,7 +34138,11 @@ fi
 
 
 if test "$wxUSE_SECRETSTORE" = "yes"; then
-            if test "$wxUSE_MSW" != "1" -a "$wxUSE_OSX_COCOA" != 1; then
+            if test "$WXGTK1" = "1"; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libsecret is incompatible with GTK+ 1, disabled" >&5
+$as_echo "$as_me: WARNING: libsecret is incompatible with GTK+ 1, disabled" >&2;}
+        wxUSE_SECRETSTORE=no
+    elif test "$wxUSE_MSW" != "1" -a "$wxUSE_OSX_COCOA" != 1; then
 
 pkg_failed=no
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for LIBSECRET" >&5
@@ -39632,7 +39648,7 @@ fi
 
     LDFLAGS_GUI=
     case ${BAKEFILE_HOST} in
-        *-*-cygwin* | *-*-mingw32* )
+        *-*-cygwin* | *-*-mingw32* | *-*-mingw64* )
         LDFLAGS_GUI="-mwindows"
     esac
 
@@ -40066,7 +40082,7 @@ fi
         fi
       ;;
 
-      *-*-cygwin* | *-*-mingw32* )
+      *-*-cygwin* | *-*-mingw32* | *-*-mingw64* )
         PIC_FLAG=""
         SHARED_LD_CC="\$(CC) -shared -o"
         SHARED_LD_CXX="\$(CXX) -shared -o"
@@ -40311,7 +40327,7 @@ EOF
 
 
     case ${BAKEFILE_HOST} in
-        *-*-cygwin* | *-*-mingw32* )
+        *-*-cygwin* | *-*-mingw32* | *-*-mingw64* )
                         if test -n "$ac_tool_prefix"; then
   # Extract the first word of "${ac_tool_prefix}windres", so it can be a program name with args.
 set dummy ${ac_tool_prefix}windres; ac_word=$2

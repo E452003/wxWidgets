@@ -28,7 +28,7 @@ wx_add_sample(dialup nettest.cpp LIBRARIES net DEPENDS wxUSE_DIALUP_MANAGER)
 wx_add_sample(display DEPENDS wxUSE_DISPLAY)
 wx_add_sample(dnd dnd.cpp RES dnd.rc DATA wxwin.png DEPENDS wxUSE_DRAG_AND_DROP)
 wx_add_sample(docview docview.cpp doc.cpp view.cpp docview.h doc.h view.h
-    RES docview.rc DEPENDS wxUSE_DOC_VIEW_ARCHITECTURE)
+    RES docview.rc LIBRARIES aui DEPENDS wxUSE_DOC_VIEW_ARCHITECTURE)
 wx_add_sample(dragimag dragimag.cpp dragimag.h RES dragimag.rc
     DATA backgrnd.png shape01.png shape02.png shape03.png
     DEPENDS wxUSE_DRAGIMAGE)
@@ -189,7 +189,20 @@ if(APPLE)
     # elsewhere we just compile native.cpp directly.
     list(APPEND SAMPLE_WIDGETS_SRC native_wrapper.mm)
 endif()
-wx_add_sample(widgets IMPORTANT ${SAMPLE_WIDGETS_SRC} LIBRARIES adv)
+wx_list_add_prefix(WIDGETS_RC_FILES icons/
+    activityindicator.xpm bmpbtn.xpm bmpcombobox.xpm button.xpm
+    checkbox.xpm choice.xpm choicebk.xpm clrpicker.xpm
+    combobox.xpm datepick.xpm dirctrl.xpm dirpicker.xpm
+    filepicker.xpm fontpicker.xpm gauge.xpm header.xpm
+    hyperlnk.xpm listbook.xpm listbox.xpm native.xpm
+    notebook.xpm odcombobox.xpm radiobox.xpm scrolbar.xpm
+    slider.xpm spinbtn.xpm statbmp.xpm statbox.xpm
+    stattext.xpm text.xpm timepick.xpm toggle.xpm
+    )
+wx_add_sample(widgets IMPORTANT ${SAMPLE_WIDGETS_SRC} 
+    DATA ${WIDGETS_RC_FILES} textctrl.cpp
+    LIBRARIES adv
+    )
 wx_add_sample(wizard LIBRARIES adv DEPENDS wxUSE_WIZARDDLG)
 wx_add_sample(wrapsizer)
 

@@ -183,6 +183,7 @@ TEST_GUI_OBJECTS =  \
 	test_gui_boundingbox.o \
 	test_gui_clippingbox.o \
 	test_gui_graphmatrix.o \
+	test_gui_graphpath.o \
 	test_gui_config.o \
 	test_gui_bitmapcomboboxtest.o \
 	test_gui_bitmaptogglebuttontest.o \
@@ -243,6 +244,7 @@ TEST_GUI_OBJECTS =  \
 	test_gui_rawbmp.o \
 	test_gui_htmlparser.o \
 	test_gui_htmlwindow.o \
+	test_gui_htmprint.o \
 	test_gui_accelentry.o \
 	test_gui_menu.o \
 	test_gui_guifuncs.o \
@@ -817,6 +819,9 @@ test_gui_clippingbox.o: $(srcdir)/graphics/clippingbox.cpp $(TEST_GUI_ODEP)
 test_gui_graphmatrix.o: $(srcdir)/graphics/graphmatrix.cpp $(TEST_GUI_ODEP)
 	$(CXXC) -c -o $@ $(TEST_GUI_CXXFLAGS) $(srcdir)/graphics/graphmatrix.cpp
 
+test_gui_graphpath.o: $(srcdir)/graphics/graphpath.cpp $(TEST_GUI_ODEP)
+	$(CXXC) -c -o $@ $(TEST_GUI_CXXFLAGS) $(srcdir)/graphics/graphpath.cpp
+
 test_gui_config.o: $(srcdir)/config/config.cpp $(TEST_GUI_ODEP)
 	$(CXXC) -c -o $@ $(TEST_GUI_CXXFLAGS) $(srcdir)/config/config.cpp
 
@@ -996,6 +1001,9 @@ test_gui_htmlparser.o: $(srcdir)/html/htmlparser.cpp $(TEST_GUI_ODEP)
 
 test_gui_htmlwindow.o: $(srcdir)/html/htmlwindow.cpp $(TEST_GUI_ODEP)
 	$(CXXC) -c -o $@ $(TEST_GUI_CXXFLAGS) $(srcdir)/html/htmlwindow.cpp
+
+test_gui_htmprint.o: $(srcdir)/html/htmprint.cpp $(TEST_GUI_ODEP)
+	$(CXXC) -c -o $@ $(TEST_GUI_CXXFLAGS) $(srcdir)/html/htmprint.cpp
 
 test_gui_accelentry.o: $(srcdir)/menu/accelentry.cpp $(TEST_GUI_ODEP)
 	$(CXXC) -c -o $@ $(TEST_GUI_CXXFLAGS) $(srcdir)/menu/accelentry.cpp

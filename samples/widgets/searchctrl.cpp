@@ -178,7 +178,7 @@ void SearchCtrlWidgetsPage::CreateControl()
     long style = GetAttrs().m_defaultFlags;
 
     m_srchCtrl = new wxSearchCtrl(this, -1, wxEmptyString, wxDefaultPosition,
-                                  wxSize(150, -1), style);
+                                  FromDIP(wxSize(150, -1)), style);
 
     m_srchCtrl->Bind(wxEVT_SET_FOCUS, &SearchCtrlWidgetsPage::OnSetFocus, this);
     m_srchCtrl->Bind(wxEVT_KILL_FOCUS, &SearchCtrlWidgetsPage::OnKillFocus, this);
@@ -205,12 +205,6 @@ wxMenu* SearchCtrlWidgetsPage::CreateTestMenu()
         wxString tipText = wxString::Format(wxT("tip %i"),i);
         menu->Append(ID_SEARCHMENU+i, itemText, tipText, wxITEM_NORMAL);
     }
-//     target->Connect(
-//         ID_SEARCHMENU,
-//         ID_SEARCHMENU+SEARCH_MENU_SIZE,
-//         wxEVT_MENU,
-//         wxCommandEventHandler(MySearchCtrl::OnSearchMenu)
-//         );
     return menu;
 }
 
