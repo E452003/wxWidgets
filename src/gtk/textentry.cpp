@@ -41,7 +41,7 @@
 //  helper function to get the length of the text
 //-----------------------------------------------------------------------------
 
-static unsigned int GetEntryTextLength(GtkEntry* entry)
+static int GetEntryTextLength(GtkEntry* entry)
 {
 #if GTK_CHECK_VERSION(2, 14, 0)
     if ( wx_is_at_least_gtk2(14) )
@@ -559,13 +559,27 @@ void wxTextEntry::DoSetValue(const wxString& value, int flags)
             EventsSuppressor noevents(this);
             Remove(0, -1);
         }
-        EventsSuppressor noeventsIf(this, !(flags & SetValue_SendEvent));
-        WriteText(value);
-    }
-    else if (flags & SetValue_SendEvent)
-        SendTextUpdatedEvent(GetEditableWindow());
 
-    SetInsertionPoint(0);
+        // Testing whether value is empty here is more than just an
+        // optimization: WriteText() always generates an explicit event in
+        // wxGTK, which we need to avoid unless SetValue_SendEvent is given.
+        if ( !value.empty() )
+        {
+            // Suppress events from here even if we do need them, it's simpler
+            // to send the event below in all cases.
+            EventsSuppressor noevents(this);
+            WriteText(value);
+        }
+
+        // Changing the value is supposed to reset the insertion point. Note,
+        // however, that this does not happen if the text doesn't really change.
+        SetInsertionPoint(0);
+    }
+
+    // OTOH we must send the event even if the text didn't really change for
+    // consistency.
+    if ( flags & SetValue_SendEvent )
+        SendTextUpdatedEvent(GetEditableWindow());
 }
 
 wxString wxTextEntry::DoGetValue() const
@@ -582,7 +596,7 @@ void wxTextEntry::Remove(long from, long to)
 }
 
 // static
-unsigned int wxTextEntry::GTKGetEntryTextLength(GtkEntry* entry)
+int wxTextEntry::GTKGetEntryTextLength(GtkEntry* entry)
 {
     return GetEntryTextLength(entry);
 }

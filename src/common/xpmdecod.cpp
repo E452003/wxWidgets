@@ -246,7 +246,7 @@ wxImage wxXPMDecoder::ReadFile(wxInputStream& stream)
 * A hard coded rgb.txt. To keep it short I removed all colornames with        *
 * trailing numbers, Blue3 etc, except the GrayXX. Sorry Grey-lovers I prefer  *
 * Gray ;-). But Grey is recognized on lookups, only on save Gray will be      *
-* used, maybe you want to do some substitue there too.                        *
+* used, maybe you want to do some substitute there too.                        *
 *                                                                             *
 * To save memory the RGBs are coded in one long value, as done by the RGB     *
 * macro.                                                                      *
@@ -812,7 +812,7 @@ wxImage wxXPMDecoder::ReadData(const char* const* xpm_data)
     unsigned char* g = new unsigned char[colors_cnt];
     unsigned char* b = new unsigned char[colors_cnt];
 
-    for (it = clr_tbl.begin(), i = 0; it != clr_tbl.end(); it++, i++)
+    for (it = clr_tbl.begin(), i = 0; it != clr_tbl.end(); ++it, ++i)
     {
         r[i] = it->second.R;
         g[i] = it->second.G;

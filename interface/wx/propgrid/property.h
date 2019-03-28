@@ -516,7 +516,7 @@ wxPG_PROP_CLASS_SPECIFIC_3          = 0x00400000
 
     Note that when displaying the value, sign is omitted if the resulting
     textual representation is effectively zero (for example, -0.0001 with
-    precision of 3 will become 0.0 instead of -0.0). This behaviour is unlike 
+    precision of 3 will become 0.0 instead of -0.0). This behaviour is unlike
     what C standard library does, but should result in better end-user
     experience in almost all cases.
 
@@ -1147,16 +1147,17 @@ public:
 
         NOTE: Following applies when OnMeasureImage() returns a "flexible" height (
         using wxPG_FLEXIBLE_SIZE(W,H) macro), which implies variable height items:
-        If rect.x is < 0, then this is a measure item call, which means that
-        dc is invalid and only thing that should be done is to set paintdata.m_drawnHeight
-        to the height of the image of item at index paintdata.m_choiceItem. This call
-        may be done even as often as once every drop-down popup show.
+        If (rect.x+rect.width) is < 0, then this is a measure item call, which
+        means that dc is invalid and only thing that should be done is to set
+        paintdata.m_drawnHeight to the height of the image of item at index
+        paintdata.m_choiceItem. This call may be done even as often as once every
+        drop-down popup show.
 
         @param dc
         wxDC to paint on.
         @param rect
         Box reserved for custom graphics. Includes surrounding rectangle, if any.
-        If x is < 0, then this is a measure item call (see above).
+        If x+width is < 0, then this is a measure item call (see above).
         @param paintdata
         wxPGPaintData structure with much useful data about painted item.
         @code
@@ -1246,7 +1247,7 @@ public:
         Called whenever validation has failed with given pending value.
 
         @remarks If you implement this in your custom property class, please
-                 remember to call the baser implementation as well, since they
+                 remember to call the base implementation as well, since they
                  may use it to revert property into pre-change state.
     */
     virtual void OnValidationFailure( wxVariant& pendingValue );
@@ -2487,11 +2488,30 @@ public:
     /**
         Constructor.
 
+        @param count
+            Number of the strings in @a labels array.
         @param labels
             Labels for choices.
+        @param values
+            Values for choices. If @NULL, indexes are used. Otherwise must have
+            at least @a count elements.
+
+        @since 3.1.2
+     */
+    wxPGChoices(size_t count, const wxString* labels, const long* values = NULL);
+
+    /**
+        Constructor overload taking wxChar strings.
+
+        This constructor is provided mostly for compatibility, prefer to use
+        one of the other constructor overloads in the new code.
+
+        @param labels
+            Labels for choices, @NULL-terminated.
 
         @param values
-            Values for choices. If @NULL, indexes are used.
+            Values for choices. If @NULL, indexes are used. Otherwise must have
+            at least the same size as @a labels.
     */
     wxPGChoices( const wxChar** labels, const long* values = NULL );
 
@@ -2502,7 +2522,8 @@ public:
             Labels for choices.
 
         @param values
-            Values for choices. If empty, indexes are used.
+            Values for choices. If empty, indexes are used. Otherwise must have
+            at least the same size as @a labels.
     */
     wxPGChoices( const wxArrayString& labels, const wxArrayInt& values = wxArrayInt() );
 
@@ -2520,16 +2541,35 @@ public:
         Adds to current. If did not have own copies, creates them now. If was empty,
         identical to set except that creates copies.
 
+        @param count
+            Number of the strings in @a labels array.
         @param labels
-            Labels for added choices.
-
+            Labels for choices.
         @param values
-            Values for added choices. If empty, relevant entry indexes are used.
-    */
-    void Add( const wxChar** labels, const ValArrItem* values = NULL );
+            Values for choices. If @NULL, indexes are used. Otherwise must have
+            at least @a count elements.
+
+        @since 3.1.2
+     */
+    void Add(size_t count, const wxString* labels, const long* values = NULL);
 
     /**
-        Adds to current. Version that works with wxArrayString and wxArrayInt.
+        Adds to current.
+
+        This overload is provided mostly for compatibility, prefer to use one
+        of the other ones in the new code.
+
+        @param labels
+            Labels for added choices, @NULL-terminated.
+
+        @param values
+            Values for added choices. If empty, relevant entry indexes are
+            used. Otherwise must have at least the same size as @a labels.
+    */
+    void Add( const wxChar** labels, const long* values = NULL );
+
+    /**
+        @overload
     */
     void Add( const wxArrayString& arr, const wxArrayInt& arrint );
 
@@ -2659,12 +2699,19 @@ public:
 
     /**
         Sets contents from lists of strings and values.
+
+        This is similar to calling Clear() and the corresponding overload of Add().
     */
+    void Set(size_t count, const wxString* labels, const long* values = NULL);
+
+    /**
+        @overload
+     */
     void Set( const wxChar** labels, const long* values = NULL );
 
     /**
-        Sets contents from lists of strings and values.
-    */
+        @overload
+     */
     void Set( const wxArrayString& labels, const wxArrayInt& values = wxArrayInt() );
 
     /**

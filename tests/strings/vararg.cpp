@@ -135,7 +135,9 @@ void VarArgTestCase::CharPrintf()
     #ifdef _MSC_VER
         #pragma warning(disable:4309) // truncation of constant value
     #endif
+    wxCLANG_WARNING_SUPPRESS(constant-conversion)
     c = 240;
+    wxCLANG_WARNING_RESTORE(constant-conversion)
     #ifdef _MSC_VER
         #pragma warning(default:4309)
     #endif
@@ -200,7 +202,6 @@ void VarArgTestCase::Sscanf()
 {
     int i = 0;
     char str[20];
-    wchar_t wstr[20];
 
     wxString input("42 test");
 
@@ -208,10 +209,18 @@ void VarArgTestCase::Sscanf()
     CPPUNIT_ASSERT( i == 42 );
     CPPUNIT_ASSERT( wxString(str) == "test" );
 
+#if !(defined(__MINGW32__) && \
+      defined(__USE_MINGW_ANSI_STDIO) && __USE_MINGW_ANSI_STDIO == 1)
+    // disable this test on mingw with __USE_MINGW_ANSI_STDIO=1
+    // to prevent a segmentation fault. See:
+    // https://sourceforge.net/p/mingw-w64/mailman/message/36118530/
+    wchar_t wstr[20];
+
     i = 0;
     wxSscanf(input, L"%d %s", &i, &wstr);
     CPPUNIT_ASSERT( i == 42 );
     CPPUNIT_ASSERT( wxString(wstr) == "test" );
+#endif
 }
 
 void VarArgTestCase::RepeatedPrintf()
@@ -239,6 +248,13 @@ void VarArgTestCase::ArgsValidation()
     // these are valid:
     wxString::Format("a string(%s,%s), ptr %p, int %i",
                      wxString(), "foo", "char* as pointer", 1);
+
+#if __cplusplus >= 201103 || wxCHECK_VISUALC_VERSION(10)
+    // Unfortunately we can't check the result as different standard libraries
+    // implementations format it in different ways, so just check that it
+    // compiles.
+    wxString::Format("null pointer is %p", nullptr);
+#endif
 
     // Microsoft has helpfully disabled support for "%n" in their CRT by
     // default starting from VC8 and somehow even calling

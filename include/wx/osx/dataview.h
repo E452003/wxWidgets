@@ -60,6 +60,7 @@ public:
     virtual void SetMinWidth   (int minWidth);
     virtual void SetReorderable(bool reorderable);
     virtual void SetResizeable (bool resizable);
+    virtual void UnsetAsSortKey();
     virtual void SetSortable   (bool sortable);
     virtual void SetSortOrder  (bool ascending);
     virtual void SetTitle      (wxString const& title);
@@ -204,7 +205,7 @@ public:
 
  // finishes editing of custom items; if no custom item is currently edited the method does nothing
   void FinishCustomItemEditing();
-  
+
   virtual void EditItem(const wxDataViewItem& item, const wxDataViewColumn *column) wxOVERRIDE;
 
  // returns the n-th pointer to a column;

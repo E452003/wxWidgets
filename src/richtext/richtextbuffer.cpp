@@ -5691,6 +5691,7 @@ bool wxRichTextParagraph::InsertText(long pos, const wxString& text)
 void wxRichTextParagraph::Copy(const wxRichTextParagraph& obj)
 {
     wxRichTextCompositeObject::Copy(obj);
+    m_impactedByFloatingObjects = obj.m_impactedByFloatingObjects;
 }
 
 /// Clear the cached lines
@@ -6843,7 +6844,7 @@ bool wxRichTextPlainText::Draw(wxDC& dc, wxRichTextDrawingContext& context, cons
     {
         if (textAttr.HasTextEffects() && (textAttr.GetTextEffects() & wxTEXT_ATTR_EFFECT_SMALL_CAPITALS))
         {
-            textFont.SetPointSize((int) (textFont.GetPointSize()*0.75));
+            textFont.SetFractionalPointSize(textFont.GetFractionalPointSize()*0.75);
             wxCheckSetFont(dc, textFont);
             charHeight = dc.GetCharHeight();
         }
@@ -6859,8 +6860,7 @@ bool wxRichTextPlainText::Draw(wxDC& dc, wxRichTextDrawingContext& context, cons
             }
             else
             {
-                double size = static_cast<double>(textFont.GetPointSize()) / wxSCRIPT_MUL_FACTOR;
-                textFont.SetPointSize(static_cast<int>(size));
+                textFont.SetFractionalPointSize(textFont.GetFractionalPointSize() / wxSCRIPT_MUL_FACTOR);
                 x = rect.x;
                 y = rect.y;
             }
@@ -6878,8 +6878,7 @@ bool wxRichTextPlainText::Draw(wxDC& dc, wxRichTextDrawingContext& context, cons
             }
             else
             {
-                double size = static_cast<double>(textFont.GetPointSize()) / wxSCRIPT_MUL_FACTOR;
-                textFont.SetPointSize(static_cast<int>(size));
+                textFont.SetFractionalPointSize(textFont.GetFractionalPointSize() / wxSCRIPT_MUL_FACTOR);
                 x = rect.x;
                 int sub_height = static_cast<int>(static_cast<double>(charHeight) / wxSCRIPT_MUL_FACTOR);
                 y = rect.y + (rect.height - sub_height + (descent - m_descent));
@@ -7197,8 +7196,7 @@ bool wxRichTextPlainText::GetRangeSize(const wxRichTextRange& range, wxSize& siz
             }
             else
             {
-                double textSize = static_cast<double>(textFont.GetPointSize()) / wxSCRIPT_MUL_FACTOR;
-                textFont.SetPointSize(static_cast<int>(textSize));
+                textFont.SetFractionalPointSize(textFont.GetFractionalPointSize() / wxSCRIPT_MUL_FACTOR);
             }
             wxCheckSetFont(dc, textFont);
             bScript = true;
@@ -7206,7 +7204,7 @@ bool wxRichTextPlainText::GetRangeSize(const wxRichTextRange& range, wxSize& siz
         else if (textAttr.HasTextEffects() && (textAttr.GetTextEffects() & wxTEXT_ATTR_EFFECT_SMALL_CAPITALS))
         {
             wxFont textFont = font;
-            textFont.SetPointSize((int) (textFont.GetPointSize()*0.75));
+            textFont.SetFractionalPointSize(textFont.GetFractionalPointSize()*0.75);
             wxCheckSetFont(dc, textFont);
             bScript = true;
         }
@@ -9264,8 +9262,7 @@ void wxRichTextStdRenderer::SetFontForBullet(wxRichTextBuffer& buffer, wxDC& dc,
             }
             else
             {
-                double size = static_cast<double>(textFont.GetPointSize()) / wxSCRIPT_MUL_FACTOR;
-                textFont.SetPointSize(static_cast<int>(size));
+                textFont.SetFractionalPointSize(textFont.GetFractionalPointSize() / wxSCRIPT_MUL_FACTOR);
             }
             wxCheckSetFont(dc, textFont);
         }
@@ -9278,7 +9275,7 @@ void wxRichTextStdRenderer::SetFontForBullet(wxRichTextBuffer& buffer, wxDC& dc,
             }
             else
             {
-                textFont.SetPointSize((int) (textFont.GetPointSize()*0.75));
+                textFont.SetFractionalPointSize(textFont.GetFractionalPointSize()*0.75);
             }
 
             wxCheckSetFont(dc, textFont);
@@ -9661,7 +9658,7 @@ bool wxRichTextFieldTypeStandard::Draw(wxRichTextField* obj, wxDC& dc, wxRichTex
             int w, h, maxDescent;
             dc.SetFont(m_font);
             dc.GetTextExtent(m_label, & w, &h, & maxDescent);
-            dc.SetBackgroundMode(wxTRANSPARENT);
+            dc.SetBackgroundMode(wxBRUSHSTYLE_TRANSPARENT);
             dc.SetTextForeground(textColour);
 
             int x = clientArea.x + (clientArea.width - w)/2;

@@ -29,7 +29,7 @@ public:
     wxBitmap(const char* const* bits);
     wxBitmap(const wxString &filename, wxBitmapType type = wxBITMAP_TYPE_XPM);
     wxBitmap(const wxImage& image, int depth = wxBITMAP_SCREEN_DEPTH, double scale = 1.0);
-    
+
     // Convert from wxIcon / wxCursor
     wxBitmap(const wxIcon& icon) { CopyFromIcon(icon); }
     explicit wxBitmap(const wxCursor& cursor);
@@ -66,9 +66,11 @@ public:
     virtual bool CopyFromIcon(const wxIcon& icon);
 
     // implementation:
-    virtual void SetHeight(int height);
-    virtual void SetWidth(int width);
-    virtual void SetDepth(int depth);
+#if WXWIN_COMPATIBILITY_3_0
+    wxDEPRECATED(virtual void SetHeight(int height));
+    wxDEPRECATED(virtual void SetWidth(int width));
+    wxDEPRECATED(virtual void SetDepth(int depth));
+#endif
 
     void *GetRawData(wxPixelDataBase& data, int bpp);
     void UngetRawData(wxPixelDataBase& data);

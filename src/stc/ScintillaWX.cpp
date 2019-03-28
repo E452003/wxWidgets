@@ -33,6 +33,8 @@
 #include "wx/dataobj.h"
 #include "wx/clipbrd.h"
 #include "wx/dnd.h"
+#include "wx/image.h"
+#include "wx/scopedarray.h"
 
 #if !wxUSE_STD_CONTAINERS && !wxUSE_STD_IOSTREAM && !wxUSE_STD_STRING
     #include "wx/beforestd.h"
@@ -117,7 +119,7 @@ public:
 #endif
           m_ct(ct), m_swx(swx), m_cx(wxDefaultCoord), m_cy(wxDefaultCoord)
         {
-            SetBackgroundStyle(wxBG_STYLE_CUSTOM);
+            SetBackgroundStyle(wxBG_STYLE_PAINT);
             SetName("wxSTCCallTip");
         }
 
@@ -520,7 +522,7 @@ void ScintillaWX::Paste() {
     pdoc->BeginUndoAction();
     ClearSelection(multiPasteMode == SC_MULTIPASTE_EACH);
 
-#if wxUSE_DATAOBJ
+#if wxUSE_CLIPBOARD
     wxTextDataObject data;
     bool gotData = false;
     bool isRectangularClipboard = false;
@@ -568,7 +570,7 @@ void ScintillaWX::Paste() {
             InsertPaste(buf, len);
         }
     }
-#endif // wxUSE_DATAOBJ
+#endif // wxUSE_CLIPBOARD
 
     pdoc->EndUndoAction();
     NotifyChange();
@@ -660,6 +662,7 @@ void ScintillaWX::AddToPopUp(const char *label, int cmd, bool enabled) {
 // can paste with the middle button.
 void ScintillaWX::ClaimSelection() {
 #ifdef __WXGTK__
+#if wxUSE_CLIPBOARD
     // Put the selected text in the PRIMARY selection
     if (!sel.Empty()) {
         SelectionText st;
@@ -672,6 +675,7 @@ void ScintillaWX::ClaimSelection() {
         }
         wxTheClipboard->UsePrimarySelection(false);
     }
+#endif // wxUSE_CLIPBOARD
 #endif
 }
 
@@ -825,7 +829,7 @@ sptr_t ScintillaWX::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam)
       }
 #endif
 
-#if wxUSE_GRAPHICS_DIRECT2D
+#if defined(__WXMSW__) && wxUSE_GRAPHICS_DIRECT2D
         case SCI_SETTECHNOLOGY:
             if ((wParam == SC_TECHNOLOGY_DEFAULT) || (wParam == SC_TECHNOLOGY_DIRECTWRITE)) {
                 if (technology != static_cast<int>(wParam)) {
@@ -1073,6 +1077,7 @@ void ScintillaWX::DoMiddleButtonUp(Point pt) {
     int newPos = PositionFromLocation(pt);
     MovePositionTo(newPos, Selection::noSel, true);
 
+#if wxUSE_CLIPBOARD
     pdoc->BeginUndoAction();
     wxTextDataObject data;
     bool gotData = false;
@@ -1094,6 +1099,7 @@ void ScintillaWX::DoMiddleButtonUp(Point pt) {
     pdoc->EndUndoAction();
     NotifyChange();
     Redraw();
+#endif // wxUSE_CLIPBOARD
 
     ShowCaretAtCurrentPosition();
     EnsureCaretVisible();
@@ -1330,6 +1336,37 @@ void ScintillaWX::SetUseAntiAliasing(bool useAA) {
 
 bool ScintillaWX::GetUseAntiAliasing() {
     return vs.extraFontFlag != 0;
+}
+
+void ScintillaWX::DoMarkerDefineBitmap(int markerNumber, const wxBitmap& bmp) {
+    if ( 0 <= markerNumber && markerNumber <= MARKER_MAX) {
+        // Build an RGBA buffer from bmp.
+        const int totalPixels = bmp.GetWidth() * bmp.GetHeight();
+        wxScopedArray<unsigned char> rgba(4*bmp.GetWidth()*bmp.GetHeight());
+        wxImage img = bmp.ConvertToImage();
+        int curRGBALoc = 0, curDataLoc = 0, curAlphaLoc = 0;
+
+        for ( int i = 0; i < totalPixels; ++i ) {
+            rgba[curRGBALoc++] = img.GetData()[curDataLoc++];
+            rgba[curRGBALoc++] = img.GetData()[curDataLoc++];
+            rgba[curRGBALoc++] = img.GetData()[curDataLoc++];
+            rgba[curRGBALoc++] =
+                img.HasAlpha() ? img.GetAlpha()[curAlphaLoc++] : wxALPHA_OPAQUE ;
+        }
+
+        // Now follow the same procedure used for handling the
+        // SCI_MARKERDEFINERGBAIMAGE message, except use the bitmap's width and
+        // height instead of the values stored in sizeRGBAImage.
+        Point bitmapSize = Point::FromInts(bmp.GetWidth(), bmp.GetHeight());
+        vs.markers[markerNumber].SetRGBAImage(bitmapSize, 1.0f, rgba.get());
+        vs.CalcLargestMarkerHeight();
+    }
+    InvalidateStyleData();
+    RedrawSelMargin();
+}
+
+void ScintillaWX::DoRegisterImage(int type, const wxBitmap& bmp) {
+    static_cast<ListBoxImpl*>(ac.lb)->RegisterImageHelper(type, bmp);
 }
 
 sptr_t ScintillaWX::DirectFunction(

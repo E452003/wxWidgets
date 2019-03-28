@@ -308,6 +308,24 @@ static wxPoint gs_lastGesturePoint;
 // the trace mask used for the focus debugging messages
 #define TRACE_FOCUS wxT("focus")
 
+// Function used to dump a brief description of a window.
+static
+wxString wxDumpWindow(wxWindowGTK* win)
+{
+    if ( !win )
+        return "(no window)";
+
+    wxString s = wxString::Format("%s(%p",
+                                  win->GetClassInfo()->GetClassName(), win);
+
+    wxString label = win->GetLabel();
+    if ( !label.empty() )
+        s += wxString::Format(", \"%s\"", label);
+    s += ")";
+
+    return s;
+}
+
 // A handy function to run from under gdb to show information about the given
 // GtkWidget. Right now it only shows its type, we could enhance it to show
 // more information later but this is already pretty useful.
@@ -1053,14 +1071,10 @@ wxTranslateGTKKeyEventToWx(wxKeyEvent& event,
 
     wxLogTrace(TRACE_KEYS, wxT("\t-> wxKeyCode %ld"), key_code);
 
-    // sending unknown key events doesn't really make sense
-    if ( !key_code )
-        return false;
-
     event.m_keyCode = key_code;
 
 #if wxUSE_UNICODE
-    event.m_uniChar = gdk_keyval_to_unicode(key_code);
+    event.m_uniChar = gdk_keyval_to_unicode(key_code ? key_code : gdk_event->keyval);
     if ( !event.m_uniChar && event.m_keyCode <= WXK_DELETE )
     {
         // Set Unicode key code to the ASCII equivalent for compatibility. E.g.
@@ -1068,6 +1082,13 @@ wxTranslateGTKKeyEventToWx(wxKeyEvent& event,
         // codes of 13.
         event.m_uniChar = event.m_keyCode;
     }
+
+    // sending unknown key events doesn't really make sense
+    if ( !key_code && !event.m_uniChar )
+        return false;
+#else
+    if (!key_code)
+        return false;
 #endif // wxUSE_UNICODE
 
     // now fill all the other fields
@@ -1797,19 +1818,6 @@ gtk_window_motion_notify_callback( GtkWidget * WXUNUSED(widget),
 
     wxCOMMON_CALLBACK_PROLOGUE(gdk_event, win);
 
-    if (gdk_event->is_hint)
-    {
-        int x = 0;
-        int y = 0;
-#ifdef __WXGTK3__
-        gdk_window_get_device_position(gdk_event->window, gdk_event->device, &x, &y, NULL);
-#else
-        gdk_window_get_pointer(gdk_event->window, &x, &y, NULL);
-#endif
-        gdk_event->x = x;
-        gdk_event->y = y;
-    }
-
     g_lastMouseEvent = (GdkEvent*) gdk_event;
 
     wxMouseEvent event( wxEVT_MOTION );
@@ -1856,6 +1864,20 @@ gtk_window_motion_notify_callback( GtkWidget * WXUNUSED(widget),
     bool ret = win->GTKProcessEvent(event);
 
     g_lastMouseEvent = NULL;
+
+    // Request additional motion events. Done at the end to increase the
+    // chances that lower priority events requested by the handler above, such
+    // as painting, can be processed before the next motion event occurs.
+    // Otherwise a long-running handler can cause paint events to be entirely
+    // blocked while the mouse is moving.
+    if (gdk_event->is_hint)
+    {
+#ifdef __WXGTK3__
+        gdk_event_request_motions(gdk_event);
+#else
+        gdk_window_get_pointer(gdk_event->window, NULL, NULL, NULL);
+#endif
+    }
 
     return ret;
 }
@@ -2198,10 +2220,28 @@ size_allocate(GtkWidget* WXUNUSED_IN_GTK2(widget), GtkAllocation* alloc, wxWindo
 #if GTK_CHECK_VERSION(3,14,0)
     if (wx_is_at_least_gtk3(14))
     {
+        // Prevent under-allocated widgets from drawing outside their allocation
         GtkAllocation clip;
         gtk_widget_get_clip(widget, &clip);
         if (clip.width > w || clip.height > h)
-            gtk_widget_set_clip(widget, alloc);
+        {
+            GtkStyleContext* sc = gtk_widget_get_style_context(widget);
+            int outline_offset, outline_width;
+            gtk_style_context_get(sc, gtk_style_context_get_state(sc),
+                "outline-offset", &outline_offset, "outline-width", &outline_width, NULL);
+            const int outline = outline_offset + outline_width;
+            GtkAllocation a = *alloc;
+            if (outline > 0)
+            {
+                // Allow enough room for focus indicator "outline", it's drawn
+                // outside of GtkCheckButton allocation with Adwaita theme
+                a.x -= outline;
+                a.y -= outline;
+                a.width += outline + outline;
+                a.height += outline + outline;
+            }
+            gtk_widget_set_clip(widget, &a);
+        }
     }
 #endif
     if (win->m_wxwindow)
@@ -2894,6 +2934,11 @@ void wxWindowGTK::PostCreation()
     InheritAttributes();
 
     SetLayoutDirection(wxLayout_Default);
+
+    // if the window had been disabled before being created, it should be
+    // created in the initially disabled state
+    if ( !m_isEnabled )
+        DoEnable(false);
 
     // unless the window was created initially hidden (i.e. Hide() had been
     // called before Create()), we should show it at GTK+ level as well
@@ -4178,7 +4223,12 @@ bool wxWindowGTK::IsShown() const
 
 void wxWindowGTK::DoEnable( bool enable )
 {
-    wxCHECK_RET( (m_widget != NULL), wxT("invalid window") );
+    if ( !m_widget )
+    {
+        // The window can be disabled before being created, so just don't do
+        // anything in this case and, in particular, don't assert.
+        return;
+    }
 
     gtk_widget_set_sensitive( m_widget, enable );
     if (m_wxwindow && (m_wxwindow != m_widget))
@@ -4296,9 +4346,7 @@ double wxWindowGTK::GetContentScaleFactor() const
 #if GTK_CHECK_VERSION(3,10,0)
     if (m_widget && gtk_check_version(3,10,0) == NULL)
     {
-        GdkWindow* window = gtk_widget_get_window(m_widget);
-        if (window)
-            scaleFactor = gdk_window_get_scale_factor(window);
+        scaleFactor = gtk_widget_get_scale_factor(m_widget);
     }
 #endif
     return scaleFactor;
@@ -4335,8 +4383,8 @@ bool wxWindowGTK::GTKHandleFocusIn()
             // GTK+ focus changed from this wxWindow back to itself, so don't
             // emit any events at all
             wxLogTrace(TRACE_FOCUS,
-                       "filtered out spurious focus change within %s(%p, %s)",
-                       GetClassInfo()->GetClassName(), this, GetLabel());
+                       "filtered out spurious focus change within %s",
+                       wxDumpWindow(this));
             gs_deferredFocusOut = NULL;
             return retval;
         }
@@ -4349,14 +4397,20 @@ bool wxWindowGTK::GTKHandleFocusIn()
 
 
     wxLogTrace(TRACE_FOCUS,
-               "handling focus_in event for %s(%p, %s)",
-               GetClassInfo()->GetClassName(), this, GetLabel());
+               "handling focus_in event for %s",
+               wxDumpWindow(this));
 
     if (m_imContext)
         gtk_im_context_focus_in(m_imContext);
 
     gs_currentFocus = this;
-    gs_pendingFocus = NULL;
+
+    if ( gs_pendingFocus )
+    {
+        wxLogTrace(TRACE_FOCUS, "Resetting pending focus %s on focus set",
+                   wxDumpWindow(gs_pendingFocus));
+        gs_pendingFocus = NULL;
+    }
 
 #if wxUSE_CARET
     // caret needs to be informed about focus change
@@ -4388,6 +4442,15 @@ bool wxWindowGTK::GTKHandleFocusOut()
     // handler issues a repaint
     const bool retval = m_wxwindow ? true : false;
 
+    // If this window is still the pending focus one, reset that pointer as
+    // we're not going to have focus any longer and DoFindFocus() must not
+    // return this window.
+    if ( gs_pendingFocus == this )
+    {
+        wxLogTrace(TRACE_FOCUS, "Resetting pending focus %s on focus loss",
+                   wxDumpWindow(this));
+        gs_pendingFocus = NULL;
+    }
 
     // NB: If a control is composed of several GtkWidgets and when focus
     //     changes from one of them to another within the same wxWindow, we get
@@ -4401,8 +4464,8 @@ bool wxWindowGTK::GTKHandleFocusOut()
         wxASSERT_MSG( gs_deferredFocusOut == NULL,
                       "deferred focus out event already pending" );
         wxLogTrace(TRACE_FOCUS,
-                   "deferring focus_out event for %s(%p, %s)",
-                   GetClassInfo()->GetClassName(), this, GetLabel());
+                   "deferring focus_out event for %s",
+                   wxDumpWindow(this));
         gs_deferredFocusOut = this;
         return retval;
     }
@@ -4415,8 +4478,8 @@ bool wxWindowGTK::GTKHandleFocusOut()
 void wxWindowGTK::GTKHandleFocusOutNoDeferring()
 {
     wxLogTrace(TRACE_FOCUS,
-               "handling focus_out event for %s(%p, %s)",
-               GetClassInfo()->GetClassName(), this, GetLabel());
+               "handling focus_out event for %s",
+               wxDumpWindow(this));
 
     gs_lastFocus = this;
 
@@ -4435,8 +4498,8 @@ void wxWindowGTK::GTKHandleFocusOutNoDeferring()
         // * or it goes to another control, in which case focus-in event will
         //   follow immediately and it will set gs_currentFocus to the right
         //   value
-        wxLogDebug("window %s(%p, %s) lost focus even though it didn't have it",
-                   GetClassInfo()->GetClassName(), this, GetLabel());
+        wxLogDebug("window %s lost focus even though it didn't have it",
+                   wxDumpWindow(this));
     }
     gs_currentFocus = NULL;
 
@@ -4463,8 +4526,8 @@ void wxWindowGTK::GTKHandleDeferredFocusOut()
     gs_deferredFocusOut = NULL;
 
     wxLogTrace(TRACE_FOCUS,
-               "processing deferred focus_out event for %s(%p, %s)",
-               GetClassInfo()->GetClassName(), this, GetLabel());
+               "processing deferred focus_out event for %s",
+               wxDumpWindow(this));
 
     GTKHandleFocusOutNoDeferring();
 }
@@ -4485,7 +4548,9 @@ void wxWindowGTK::SetFocus()
     // Because we want to FindFocus() call immediately following
     // foo->SetFocus() to return foo, we have to keep track of "pending" focus
     // ourselves.
-    gs_pendingFocus = this;
+    gs_pendingFocus = NULL;
+    if (gs_currentFocus != this)
+        gs_pendingFocus = this;
 
     GtkWidget *widget = m_wxwindow ? m_wxwindow : m_focusWidget;
 
@@ -4493,15 +4558,15 @@ void wxWindowGTK::SetFocus()
          !gtk_widget_get_can_focus(widget) )
     {
         wxLogTrace(TRACE_FOCUS,
-                   wxT("Setting focus to a child of %s(%p, %s)"),
-                   GetClassInfo()->GetClassName(), this, GetLabel().c_str());
+                   wxT("Setting focus to a child of %s"),
+                   wxDumpWindow(this));
         gtk_widget_child_focus(widget, GTK_DIR_TAB_FORWARD);
     }
     else
     {
         wxLogTrace(TRACE_FOCUS,
-                   wxT("Setting focus to %s(%p, %s)"),
-                   GetClassInfo()->GetClassName(), this, GetLabel().c_str());
+                   wxT("Setting focus to %s"),
+                   wxDumpWindow(this));
         gtk_widget_grab_focus(widget);
     }
 }

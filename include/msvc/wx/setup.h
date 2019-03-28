@@ -65,8 +65,10 @@
         #define wxCOMPILER_PREFIX vc120
     #elif _MSC_VER == 1900
         #define wxCOMPILER_PREFIX vc140
-    #elif _MSC_VER >= 1910 && _MSC_VER < 2000
+    #elif _MSC_VER >= 1910 && _MSC_VER < 1920
         #define wxCOMPILER_PREFIX vc141
+    #elif _MSC_VER >= 1920 && _MSC_VER < 2000
+        #define wxCOMPILER_PREFIX vc142
     #else
         #error "Unknown MSVC compiler version, please report to wx-dev."
     #endif
@@ -77,6 +79,8 @@
 // architecture-specific part: not used (again, for compatibility), for x86
 #if defined(_M_X64)
     #define wxARCH_SUFFIX _x64
+#elif defined(_M_ARM64)
+    #define wxARCH_SUFFIX _arm64
 #elif defined(_M_IA64)
     #define wxARCH_SUFFIX _ia64
 #else // assume _M_IX86
@@ -158,7 +162,7 @@
         #pragma comment(lib, wxBASE_LIB_NAME("net"))
     #endif
     #if wxUSE_XML && !defined(wxNO_XML_LIB)
-        #pragma comment(lib, wxBASE_LIB_NAME("xml"))        
+        #pragma comment(lib, wxBASE_LIB_NAME("xml"))
     #endif
 #endif // defined(wxMONOLITHIC) && wxMONOLITHIC == 1
 
@@ -200,13 +204,9 @@
 
         #pragma comment(lib, wxTOOLKIT_LIB_NAME("core"))
 
-        #ifndef wxNO_ADV_LIB
-            #pragma comment(lib, wxTOOLKIT_LIB_NAME("adv"))
-        #endif
-
         #if wxUSE_HTML && !defined(wxNO_HTML_LIB)
             #pragma comment(lib, wxTOOLKIT_LIB_NAME("html"))
-        #endif       
+        #endif
         #if wxUSE_DEBUGREPORT && !defined(wxNO_QA_LIB)
             #pragma comment(lib, wxTOOLKIT_LIB_NAME("qa"))
         #endif
@@ -229,7 +229,7 @@
             #pragma comment(lib, wxTOOLKIT_LIB_NAME("media"))
         #endif
         #if wxUSE_STC && !defined(wxNO_STC_LIB)
-            #pragma comment(lib, wxTOOLKIT_LIB_NAME("stc"))           
+            #pragma comment(lib, wxTOOLKIT_LIB_NAME("stc"))
         #endif
         #if wxUSE_WEBVIEW && !defined(wxNO_WEBVIEW_LIB)
             #pragma comment(lib, wxTOOLKIT_LIB_NAME("webview"))

@@ -269,6 +269,8 @@ wxIMPLEMENT_DYNAMIC_CLASS(wxWindow, wxWindowBase);
 
 // the default initialization
 wxWindowBase::wxWindowBase()
+    : m_virtualSize(wxDefaultSize)
+    , m_bestSizeCache(wxDefaultSize)
 {
     // no window yet, no parent nor children
     m_parent = NULL;
@@ -279,9 +281,6 @@ wxWindowBase::wxWindowBase()
     m_maxWidth = wxDefaultCoord;
     m_minHeight =
     m_maxHeight = wxDefaultCoord;
-
-    // invalidiated cache value
-    m_bestSizeCache = wxDefaultSize;
 
     // window are created enabled and visible by default
     m_isShown =
@@ -339,8 +338,6 @@ wxWindowBase::wxWindowBase()
 #if wxUSE_ACCESSIBILITY
     m_accessible = NULL;
 #endif
-
-    m_virtualSize = wxDefaultSize;
 
     m_scrollHelper = NULL;
 
@@ -1020,22 +1017,22 @@ void wxWindowBase::DoSetWindowVariant( wxWindowVariant variant )
     // adjust the font height to correspond to our new variant (notice that
     // we're only called if something really changed)
     wxFont font = GetFont();
-    int size = font.GetPointSize();
+    float size = font.GetFractionalPointSize();
     switch ( variant )
     {
         case wxWINDOW_VARIANT_NORMAL:
             break;
 
         case wxWINDOW_VARIANT_SMALL:
-            size = wxRound(size / 1.2);
+            size /= 1.2f;
             break;
 
         case wxWINDOW_VARIANT_MINI:
-            size = wxRound(size / (1.2 * 1.2));
+            size /= 1.2f * 1.2f;
             break;
 
         case wxWINDOW_VARIANT_LARGE:
-            size = wxRound(size * 1.2);
+            size *= 1.2f;
             break;
 
         default:
@@ -1043,7 +1040,7 @@ void wxWindowBase::DoSetWindowVariant( wxWindowVariant variant )
             break;
     }
 
-    font.SetPointSize(size);
+    font.SetFractionalPointSize(size);
     SetFont(font);
 }
 

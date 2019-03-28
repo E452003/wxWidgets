@@ -41,12 +41,21 @@ inline void wxVectorSort(wxVector<T>& v)
 
 // wxQsort is declared in wx/utils.h, but can't include that file here,
 // it indirectly includes this file. Just lovely...
+//
+// Moreover, just declaring it here unconditionally results in gcc
+// -Wredundant-decls warning, so use a preprocessor guard to avoid this.
+#ifndef wxQSORT_DECLARED
+
+#define wxQSORT_DECLARED
+
 typedef int (*wxSortCallback)(const void* pItem1,
                               const void* pItem2,
                               const void* user_data);
 WXDLLIMPEXP_BASE void wxQsort(void* pbase, size_t total_elems,
                               size_t size, wxSortCallback cmp,
                               const void* user_data);
+
+#endif // !wxQSORT_DECLARED
 
 namespace wxPrivate
 {
@@ -219,6 +228,14 @@ public:
             { return m_ptr == it.m_ptr; }
         bool operator !=(const reverse_iterator& it) const
             { return m_ptr != it.m_ptr; }
+        bool operator<(const reverse_iterator& it) const
+            { return m_ptr > it.m_ptr; }
+        bool operator>(const reverse_iterator& it) const
+            { return m_ptr < it.m_ptr; }
+        bool operator<=(const reverse_iterator& it) const
+            { return m_ptr >= it.m_ptr; }
+        bool operator>=(const reverse_iterator& it) const
+            { return m_ptr <= it.m_ptr; }
 
     private:
         value_type *m_ptr;
@@ -274,6 +291,14 @@ public:
             { return m_ptr == it.m_ptr; }
         bool operator !=(const const_reverse_iterator& it) const
             { return m_ptr != it.m_ptr; }
+        bool operator<(const const_reverse_iterator& it) const
+            { return m_ptr > it.m_ptr; }
+        bool operator>(const const_reverse_iterator& it) const
+            { return m_ptr < it.m_ptr; }
+        bool operator<=(const const_reverse_iterator& it) const
+            { return m_ptr >= it.m_ptr; }
+        bool operator>=(const const_reverse_iterator& it) const
+            { return m_ptr <= it.m_ptr; }
 
     protected:
         const value_type *m_ptr;
@@ -668,6 +693,19 @@ void wxVectorSort(wxVector<T>& v)
 
 
 #endif // wxUSE_STD_CONTAINERS/!wxUSE_STD_CONTAINERS
+
+// Define vector::shrink_to_fit() equivalent which can be always used, even
+// when using pre-C++11 std::vector.
+template<typename T>
+inline void wxShrinkToFit(wxVector<T>& v)
+{
+#if !wxUSE_STD_CONTAINERS || __cplusplus >= 201103L || wxCHECK_VISUALC_VERSION(10)
+    v.shrink_to_fit();
+#else
+    wxVector<T> tmp(v);
+    v.swap(tmp);
+#endif
+}
 
 #if WXWIN_COMPATIBILITY_2_8
     #define WX_DECLARE_VECTORBASE(obj, cls) typedef wxVector<obj> cls

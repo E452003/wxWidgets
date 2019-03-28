@@ -20,7 +20,7 @@
     This is an abstract class, and you will normally use one of the predefined
     derived classes or derive your own class from it.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellAutoWrapStringRenderer, wxGridCellBoolRenderer,
@@ -101,7 +101,7 @@ protected:
     This class may be used to format string data in a cell. The too
     long lines are wrapped to be shown entirely at word boundaries.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellRenderer, wxGridCellBoolRenderer,
@@ -125,7 +125,7 @@ public:
 
     This class may be used to format boolean data in a cell.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellRenderer, wxGridCellAutoWrapStringRenderer,
@@ -143,21 +143,65 @@ public:
 };
 
 /**
+    @class wxGridCellDateRenderer
+
+    This class may be used to show a date, without time, in a cell.
+
+    See @ref wxGridCellDateTimeRenderer for a date/time version.
+    wxDateTime::Format() is used internally to render the date
+    representation. wxDateTime::ParseDate() is used to parse the string
+    data entered in the cell.
+
+    @library{wxcore}
+    @category{grid}
+
+    @see wxGridCellRenderer, wxGridCellAutoWrapStringRenderer,
+         wxGridCellBoolRenderer, wxGridCellEnumRenderer,
+         wxGridCellFloatRenderer, wxGridCellNumberRenderer,
+         wxGridCellStringRenderer, wxGridCellDateTimeRenderer
+
+    @since 3.1.3
+*/
+class wxGridCellDateRenderer : public wxGridCellStringRenderer
+{
+public:
+    /**
+        Date renderer constructor.
+
+        @param outformat
+            strftime()-like format string used to render the output date.
+            By default (or if provided format string is empty) localized
+            date representation ("%x") is used.
+    */
+    wxGridCellDateRenderer(const wxString& outformat = wxString());
+
+
+    /**
+        Sets the strftime()-like format string which will be used to render
+        the date.
+
+        @param params
+            strftime()-like format string used to render the date.
+    */
+    virtual void SetParameters(const wxString& params);
+};
+
+/**
     @class wxGridCellDateTimeRenderer
 
     This class may be used to format a date/time data in a cell.
     The class wxDateTime is used internally to display the local date/time
     or to parse the string date entered in the cell thanks to the defined format.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellRenderer, wxGridCellAutoWrapStringRenderer,
          wxGridCellBoolRenderer, wxGridCellEnumRenderer,
          wxGridCellFloatRenderer, wxGridCellNumberRenderer,
-         wxGridCellStringRenderer
+         wxGridCellStringRenderer, wxGridCellDateRenderer
 */
-class wxGridCellDateTimeRenderer : public wxGridCellStringRenderer
+class wxGridCellDateTimeRenderer : public wxGridCellDateRenderer
 {
 public:
     /**
@@ -193,7 +237,7 @@ public:
     example, if this string is @c "John,Fred,Bob" the cell will be rendered as
     "John", "Fred" or "Bob" if its contents is 0, 1 or 2 respectively.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellRenderer, wxGridCellAutoWrapStringRenderer,
@@ -251,7 +295,7 @@ enum wxGridCellFloatFormat
 
     This class may be used to format floating point data in a cell.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellRenderer, wxGridCellAutoWrapStringRenderer,
@@ -328,7 +372,7 @@ public:
 
     This class may be used to format integer data in a cell.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellRenderer, wxGridCellAutoWrapStringRenderer,
@@ -351,7 +395,7 @@ public:
     This class may be used to format string data in a cell; it is the default
     for string cells.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellRenderer, wxGridCellAutoWrapStringRenderer,
@@ -378,13 +422,13 @@ public:
     the cell attributes for individual cells, rows, columns, or even for the
     entire grid.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellAutoWrapStringEditor, wxGridCellBoolEditor,
          wxGridCellChoiceEditor, wxGridCellEnumEditor,
          wxGridCellFloatEditor, wxGridCellNumberEditor,
-         wxGridCellTextEditor
+         wxGridCellTextEditor, wxGridCellDateEditor
 */
 class wxGridCellEditor : public wxClientDataContainer, public wxRefCounter
 {
@@ -527,12 +571,13 @@ protected:
 
     Grid cell editor for wrappable string/text data.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellEditor, wxGridCellBoolEditor, wxGridCellChoiceEditor,
          wxGridCellEnumEditor, wxGridCellFloatEditor,
-         wxGridCellNumberEditor, wxGridCellTextEditor
+         wxGridCellNumberEditor, wxGridCellTextEditor,
+         wxGridCellDateEditor
 */
 class wxGridCellAutoWrapStringEditor : public wxGridCellTextEditor
 {
@@ -545,13 +590,13 @@ public:
 
     Grid cell editor for boolean data.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellEditor, wxGridCellAutoWrapStringEditor,
          wxGridCellChoiceEditor, wxGridCellEnumEditor,
          wxGridCellFloatEditor, wxGridCellNumberEditor,
-         wxGridCellTextEditor
+         wxGridCellTextEditor, wxGridCellDateEditor
 */
 class wxGridCellBoolEditor : public wxGridCellEditor
 {
@@ -584,13 +629,13 @@ public:
     Grid cell editor for string data providing the user a choice from a list of
     strings.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellEditor, wxGridCellAutoWrapStringEditor,
          wxGridCellBoolEditor, wxGridCellEnumEditor,
          wxGridCellFloatEditor, wxGridCellNumberEditor,
-         wxGridCellTextEditor
+         wxGridCellTextEditor, wxGridCellDateEditor
 */
 class wxGridCellChoiceEditor : public wxGridCellEditor
 {
@@ -635,13 +680,13 @@ public:
     (e.g. data in cell is 0,1,2 ... n the cell could be displayed as
     "John","Fred"..."Bob" in the combo choice box).
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellEditor, wxGridCellAutoWrapStringEditor,
          wxGridCellBoolEditor, wxGridCellChoiceEditor,
          wxGridCellTextEditor, wxGridCellFloatEditor,
-         wxGridCellNumberEditor
+         wxGridCellNumberEditor, wxGridCellDateEditor
 */
 class wxGridCellEnumEditor : public wxGridCellChoiceEditor
 {
@@ -660,13 +705,13 @@ public:
 
     Grid cell editor for string/text data.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellEditor, wxGridCellAutoWrapStringEditor,
          wxGridCellBoolEditor, wxGridCellChoiceEditor,
          wxGridCellEnumEditor, wxGridCellFloatEditor,
-         wxGridCellNumberEditor
+         wxGridCellNumberEditor, wxGridCellDateEditor
 */
 class wxGridCellTextEditor : public wxGridCellEditor
 {
@@ -699,13 +744,13 @@ public:
 
     The editor for floating point numbers data.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellEditor, wxGridCellAutoWrapStringEditor,
          wxGridCellBoolEditor, wxGridCellChoiceEditor,
          wxGridCellEnumEditor, wxGridCellNumberEditor,
-         wxGridCellTextEditor
+         wxGridCellTextEditor, wxGridCellDateEditor
 */
 class wxGridCellFloatEditor : public wxGridCellTextEditor
 {
@@ -737,13 +782,13 @@ public:
 
     Grid cell editor for numeric integer data.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see wxGridCellEditor, wxGridCellAutoWrapStringEditor,
          wxGridCellBoolEditor, wxGridCellChoiceEditor,
          wxGridCellEnumEditor, wxGridCellFloatEditor,
-         wxGridCellTextEditor
+         wxGridCellTextEditor, wxGridCellDateEditor
 */
 class wxGridCellNumberEditor : public wxGridCellTextEditor
 {
@@ -775,6 +820,32 @@ protected:
     wxString GetString() const;
 };
 
+/**
+    @class wxGridCellDateEditor
+
+    Grid cell editor for dates.
+
+    Uses @ref wxDatePickerCtrl as actual edit control.
+
+    @library{wxcore}
+    @category{grid}
+
+    @see wxGridCellEditor, wxGridCellAutoWrapStringEditor,
+         wxGridCellBoolEditor, wxGridCellChoiceEditor,
+         wxGridCellEnumEditor, wxGridCellFloatEditor,
+         wxGridCellTextEditor
+
+    @since 3.1.3
+*/
+class wxGridCellDateEditor : public wxGridCellEditor
+{
+public:
+    /**
+        Date editor constructor.
+    */
+    wxGridCellDateEditor();
+};
+
 
 
 /**
@@ -784,7 +855,7 @@ protected:
     changing their attributes from the defaults. An object of this class may be
     returned by wxGridTableBase::GetAttr().
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 */
 class wxGridCellAttr : public wxClientDataContainer, public wxRefCounter
@@ -830,7 +901,7 @@ public:
 
     /**
         This class is reference counted: it is created with ref count of 1, so
-        calling DecRef() once will delete it. Calling IncRef() allows to lock
+        calling DecRef() once will delete it. Calling IncRef() allows locking
         it until the matching DecRef() is called.
     */
     void DecRef();
@@ -934,7 +1005,7 @@ public:
 
     /**
         This class is reference counted: it is created with ref count of 1, so
-        calling DecRef() once will delete it. Calling IncRef() allows to lock
+        calling DecRef() once will delete it. Calling IncRef() allows locking
         it until the matching DecRef() is called.
     */
     void IncRef();
@@ -987,7 +1058,7 @@ public:
     */
     void SetTextColour(const wxColour& colText);
 
-    
+
     void MergeWith(wxGridCellAttr *mergefrom);
 
     void SetSize(int num_rows, int num_cols);
@@ -1012,20 +1083,18 @@ protected:
 };
 
 /**
-    Base class for corner window renderer.
+    Base class for header cells renderers.
 
-    This is the simplest of all header renderers and only has a single
-    function.
-
-    @see wxGridCellAttrProvider::GetCornerRenderer()
+    A cell renderer can be used to draw the text of a cell's label, and/or
+    the border around it.
 
     @since 2.9.1
  */
-class wxGridCornerHeaderRenderer
+class wxGridHeaderLabelsRenderer
 {
 public:
     /**
-        Called by the grid to draw the corner window border.
+        Called by the grid to draw the border around the cell header.
 
         This method is responsible for drawing the border inside the given @a
         rect and adjusting the rectangle size to correspond to the area inside
@@ -1033,7 +1102,7 @@ public:
         border width.
 
         @param grid
-            The grid whose corner window is being drawn.
+            The grid whose header cell window is being drawn.
         @param dc
             The device context to use for drawing.
         @param rect
@@ -1044,23 +1113,11 @@ public:
     virtual void DrawBorder(const wxGrid& grid,
                             wxDC& dc,
                             wxRect& rect) const = 0;
-};
 
-/**
-    Common base class for row and column headers renderers.
-
-    @see wxGridColumnHeaderRenderer, wxGridRowHeaderRenderer
-
-    @since 2.9.1
- */
-class wxGridHeaderLabelsRenderer : public wxGridCornerHeaderRenderer
-{
-public:
     /**
         Called by the grid to draw the specified label.
 
-        Notice that the base class DrawBorder() method is called before this
-        one.
+        Notice that the DrawBorder() method is called before this one.
 
         The default implementation uses wxGrid::GetLabelTextColour() and
         wxGrid::GetLabelFont() to draw the label.
@@ -1078,7 +1135,8 @@ public:
     Base class for row headers renderer.
 
     This is the same as wxGridHeaderLabelsRenderer currently but we still use a
-    separate class for it to distinguish it from wxGridColumnHeaderRenderer.
+    separate class for it to distinguish it from wxGridColumnHeaderRenderer
+    and wxGridCornerHeaderRenderer.
 
     @see wxGridRowHeaderRendererDefault
 
@@ -1094,7 +1152,8 @@ class wxGridRowHeaderRenderer : public wxGridHeaderLabelsRenderer
     Base class for column headers renderer.
 
     This is the same as wxGridHeaderLabelsRenderer currently but we still use a
-    separate class for it to distinguish it from wxGridRowHeaderRenderer.
+    separate class for it to distinguish it from wxGridRowHeaderRenderer and
+    wxGridCornerHeaderRenderer.
 
     @see wxGridColumnHeaderRendererDefault
 
@@ -1107,13 +1166,30 @@ class wxGridColumnHeaderRenderer : public wxGridHeaderLabelsRenderer
 };
 
 /**
+    Base class for corner header renderer.
+
+    This is the same as wxGridHeaderLabelsRenderer currently but we still use a
+    separate class for it to distinguish it from wxGridRowHeaderRenderer and
+    wxGridColumnHeaderRenderer.
+
+    @see wxGridCornerHeaderRendererDefault
+
+    @see wxGridCellAttrProvider::GetCornerRenderer()
+
+    @since 2.9.1
+ */
+class wxGridCornerHeaderRenderer : public wxGridHeaderLabelsRenderer
+{
+};
+
+/**
     Default row header renderer.
 
     You may derive from this class if you need to only override one of its
     methods (i.e. either DrawLabel() or DrawBorder()) but continue to use the
     default implementation for the other one.
 
-    @see wxGridColumnHeaderRendererDefault
+    @see wxGridColumnHeaderRendererDefault, wxGridCornerHeaderRendererDefault
 
     @since 2.9.1
  */
@@ -1129,7 +1205,7 @@ public:
 /**
     Default column header renderer.
 
-    @see wxGridRowHeaderRendererDefault
+    @see wxGridRowHeaderRendererDefault, wxGridCornerHeaderRendererDefault
 
     @since 2.9.1
  */
@@ -1393,8 +1469,10 @@ public:
 
     void SetRowLabelValue( int row, const wxString& );
     void SetColLabelValue( int col, const wxString& );
+    void SetCornerLabelValue( const wxString& );
     wxString GetRowLabelValue( int row );
     wxString GetColLabelValue( int col );
+    wxString GetCornerLabelValue() const;
 };
 
 /**
@@ -1488,7 +1566,7 @@ public:
 
     @see wxGridStringTable
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 */
 class wxGridTableBase : public wxObject
@@ -1633,6 +1711,11 @@ public:
 
         This should only be called if CanGetValueAs() returns @true when called
         with @a typeName. Default implementation always return @NULL.
+
+        Note that if the pointer is not null, it will be deleted by the caller,
+        so it must be allocated on the heap by any class overriding this
+        method. In practice, it means that the value stored internally must be
+        cloned on every call.
      */
     virtual void *GetValueAsCustom(int row, int col, const wxString& typeName);
 
@@ -1764,13 +1847,19 @@ public:
     //@}
 
     /*!
-        @name Table Row and Column Labels
+        @name Table Row, Column and Corner Labels
 
         By default the numbers are used for labelling rows and Latin letters for
         labelling columns. If the table has more than 26 columns, the pairs of
         letters are used starting from the 27-th one and so on, i.e. the
         sequence of labels is A, B, ..., Z, AA, AB, ..., AZ, BA, ..., ..., ZZ,
         AAA, ...
+
+        A cell in the top-left corner of a grid can also have a label. It is
+        empty by default. Use wxGrid::SetCornerLabelValue() to set it and
+        wxGrid::GetCornerLabelValue() to get its' current value.
+
+        @see wxGridTableBase::GetCornerLabelValue, wxGridTableBase::SetCornerLabelValue
      */
     //@{
 
@@ -1785,6 +1874,13 @@ public:
     virtual wxString GetColLabelValue(int col);
 
     /**
+        Return the label of the grid's corner.
+
+        @since 3.1.2
+     */
+    virtual wxString GetCornerLabelValue() const;
+
+    /**
         Set the given label for the specified row.
 
         The default version does nothing, i.e. the label is not stored. You
@@ -1797,6 +1893,17 @@ public:
         Exactly the same as SetRowLabelValue() but for columns.
      */
     virtual void SetColLabelValue(int col, const wxString& label);
+
+    /**
+        Set the given label for the grid's corner.
+
+        The default version does nothing, i.e. the label is not stored. You
+        must override this method in your derived class if you wish
+        wxGrid::GetCornerLabelValue() to work.
+
+        @since 3.1.2
+     */
+    virtual void SetCornerLabelValue( const wxString& );
 
     //@}
 
@@ -1921,7 +2028,7 @@ enum wxGridTableRequest
     This structure is particularly useful for serializing the sizes of all
     wxGrid elements at once.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
  */
 struct wxGridSizesInfo
@@ -2044,6 +2151,8 @@ enum wxGridRenderStyle
     - wxGridCellFloatRenderer
     - wxGridCellNumberRenderer
     - wxGridCellStringRenderer
+    - wxGridCellDateRenderer
+    - wxGridCellDateTimeRenderer
 
     The look of a cell can be further defined using wxGridCellAttr. An object
     of this type may be returned by wxGridTableBase::GetAttr().
@@ -2056,12 +2165,13 @@ enum wxGridRenderStyle
     - wxGridCellFloatEditor
     - wxGridCellNumberEditor
     - wxGridCellTextEditor
+    - wxGridCellDateEditor
 
     Please see wxGridEvent, wxGridSizeEvent, wxGridRangeSelectEvent, and
     wxGridEditorCreatedEvent for the documentation of all event types you can
     use with wxGrid.
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 
     @see @ref overview_grid, wxGridUpdateLocker
@@ -2283,7 +2393,7 @@ public:
         wxPen MidiGrid::GetRowGridLinePen(int row)
         {
             if ( row % 12 == 7 )
-                return wxPen(*wxBLACK, 1, wxSOLID);
+                return wxPen(*wxBLACK, 1, wxPENSTYLE_SOLID);
             else
                 return GetDefaultGridLinePen();
         }
@@ -2335,6 +2445,34 @@ public:
         labels.
     */
     wxString GetColLabelValue(int col) const;
+
+    /**
+        Sets the arguments to the current corner label alignment values.
+
+        Horizontal alignment will be one of @c wxALIGN_LEFT, @c wxALIGN_CENTRE
+        or @c wxALIGN_RIGHT.
+
+        Vertical alignment will be one of @c wxALIGN_TOP, @c wxALIGN_CENTRE or
+        @c wxALIGN_BOTTOM.
+
+        @since 3.1.2
+    */
+    void GetCornerLabelAlignment( int *horiz, int *vert ) const;
+
+    /**
+        Returns the orientation of the corner label (either @c wxHORIZONTAL or
+        @c wxVERTICAL).
+
+        @since 3.1.2
+    */
+    int GetCornerLabelTextOrientation() const;
+
+    /**
+        Returns the (top-left) corner label.
+
+        @since 3.1.2
+    */
+    wxString GetCornerLabelValue() const;
 
     /**
         Returns the colour used for the background of row and column labels.
@@ -2407,6 +2545,35 @@ public:
         wxGridTableBase::SetColLabelValue() for this to have any effect.
     */
     void SetColLabelValue(int col, const wxString& value);
+
+    /**
+        Sets the horizontal and vertical alignment of the (top-left) corner label text.
+
+        Horizontal alignment should be one of @c wxALIGN_LEFT,
+        @c wxALIGN_CENTRE or @c wxALIGN_RIGHT. Vertical alignment should be one
+        of @c wxALIGN_TOP, @c wxALIGN_CENTRE or @c wxALIGN_BOTTOM.
+
+        @since 3.1.2
+    */
+    void SetCornerLabelAlignment( int horiz, int vert );
+
+    /**
+        Sets the orientation of the (top-left) corner label (either @c wxHORIZONTAL or
+        @c wxVERTICAL).
+
+        @since 3.1.2
+    */
+    void SetCornerLabelTextOrientation( int textOrientation );
+
+    /**
+        Set the value for the (top-left) corner label.
+
+        If you are using a custom grid table you must override
+        wxGridTableBase::SetCornerLabelValue() for this to have any effect.
+
+        @since 3.1.2
+    */
+    void SetCornerLabelValue( const wxString& );
 
     /**
         Sets the background colour for row and column labels.
@@ -2768,7 +2935,7 @@ public:
         The base class version returns the editor which was associated with the
         specified @a typeName when it was registered RegisterDataType() but
         this function may be overridden to return something different. This
-        allows to override an editor used for one of the standard types.
+        allows overriding an editor used for one of the standard types.
 
         The caller must call DecRef() on the returned pointer.
     */
@@ -2868,9 +3035,10 @@ public:
             Name of the new type. May be any string, but if the type name is
             the same as the name of an already registered type, including one
             of the standard ones (which are @c wxGRID_VALUE_STRING, @c
-            wxGRID_VALUE_BOOL, @c wxGRID_VALUE_NUMBER, @c wxGRID_VALUE_FLOAT
-            and @c wxGRID_VALUE_CHOICE), then the new registration information
-            replaces the previously used renderer and editor.
+            wxGRID_VALUE_BOOL, @c wxGRID_VALUE_NUMBER, @c wxGRID_VALUE_FLOAT,
+            @c wxGRID_VALUE_CHOICE and @c wxGRID_VALUE_DATE), then the new
+            registration information replaces the previously used renderer and
+            editor.
         @param renderer
             The renderer to use for the cells of this type. Its ownership is
             taken by the grid, i.e. it will call DecRef() on this pointer when
@@ -2996,6 +3164,19 @@ public:
         @see SetColFormatCustom()
     */
     void SetColFormatNumber(int col);
+
+    /**
+        Sets the specified column to display date values.
+
+        The @a format argument is used with wxGridCellDateRenderer and allows
+        to specify the strftime-like format string to use for displaying the
+        dates in this column.
+
+        @see SetColFormatCustom()
+
+        @since 3.1.3
+    */
+    void SetColFormatDate(int col, const wxString& format = wxString());
 
     /**
         Sets the default editor for grid cells.
@@ -3486,7 +3667,7 @@ public:
     /**
         Disable interactive resizing of the specified column.
 
-        This method allows to disable resizing of an individual column in a
+        This method allows one to disable resizing of an individual column in a
         grid where the columns are otherwise resizable (which is the case by
         default).
 
@@ -4444,7 +4625,7 @@ public:
         Sets the extra margins used around the grid area.
 
         A grid may occupy more space than needed for its data display and
-        this function allows to set how big this extra space is
+        this function allows setting how big this extra space is
     */
     void SetMargins(int extraWidth, int extraHeight);
 
@@ -4458,7 +4639,7 @@ public:
     */
     void SetRowAttr(int row, wxGridCellAttr* attr);
 
-    
+
     wxArrayInt CalcRowLabelsExposed( const wxRegion& reg );
     wxArrayInt CalcColLabelsExposed( const wxRegion& reg );
     wxGridCellCoordsArray CalcCellsExposed( const wxRegion& reg );
@@ -4604,7 +4785,7 @@ public:
 
 
     virtual void DrawCellHighlight( wxDC& dc, const wxGridCellAttr *attr );
-    
+
     virtual void DrawRowLabels( wxDC& dc, const wxArrayInt& rows );
     virtual void DrawRowLabel( wxDC& dc, int row );
 
@@ -4629,9 +4810,9 @@ public:
 
     void SetCellHighlightColour( const wxColour& );
     void SetCellHighlightPenWidth(int width);
-    void SetCellHighlightROPenWidth(int width);   
+    void SetCellHighlightROPenWidth(int width);
 
-    
+
 protected:
     /**
         Returns @true if this grid has support for cell attributes.
@@ -4645,7 +4826,7 @@ protected:
     /**
         Get the minimal width of the given column/row.
 
-        The value returned by this function may be different than that returned
+        The value returned by this function may be different from that returned
         by GetColMinimalAcceptableWidth() if SetColMinimalWidth() had been
         called for this column.
     */
@@ -4664,7 +4845,7 @@ protected:
     /**
         Returns the minimal size for the given column.
 
-        The value returned by this function may be different than that returned
+        The value returned by this function may be different from that returned
         by GetRowMinimalAcceptableHeight() if SetRowMinimalHeight() had been
         called for this row.
     */
@@ -4700,7 +4881,7 @@ protected:
     wxGrid::EndBatch() because you don't risk missing the call the latter (due
     to an exception for example).
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid}
 */
 class wxGridUpdateLocker
@@ -4824,7 +5005,7 @@ public:
         wxWidgets 2.9.5.
     @endEventTable
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid,events}
 */
 class wxGridEvent : public wxNotifyEvent
@@ -4918,7 +5099,7 @@ public:
         Same as EVT_GRID_CMD_ROW_SIZE() but uses `wxID_ANY` id.
     @endEventTable
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid,events}
 */
 class wxGridSizeEvent : public wxNotifyEvent
@@ -4980,7 +5161,7 @@ public:
         identifier. Processes a @c wxEVT_GRID_RANGE_SELECT event type.
     @endEventTable
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid,events}
 */
 class wxGridRangeSelectEvent : public wxNotifyEvent
@@ -5069,7 +5250,7 @@ public:
         Processes a @c wxEVT_GRID_EDITOR_CREATED event type.
     @endEventTable
 
-    @library{wxadv}
+    @library{wxcore}
     @category{grid,events}
 */
 class wxGridEditorCreatedEvent : public wxCommandEvent

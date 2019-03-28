@@ -487,7 +487,7 @@ bool wxWindowDCImpl::DoGetPixel( wxCoord x1, wxCoord y1, wxColour *col ) const
     }
     if (image == NULL)
     {
-        *col = wxColour();
+        col->UnRef();
         return false;
     }
     GdkColormap* colormap = gdk_image_get_colormap(image);
@@ -498,7 +498,7 @@ bool wxWindowDCImpl::DoGetPixel( wxCoord x1, wxCoord y1, wxColour *col ) const
     {
         GdkColor c;
         gdk_colormap_query_color(colormap, pixel, &c);
-        col->Set(c.red >> 8, c.green >> 8, c.blue >> 8);
+        *col = wxColour(c);
     }
     g_object_unref(image);
     return true;
@@ -2062,7 +2062,7 @@ void wxWindowDCImpl::ComputeScaleAndOrigin()
         // this is a bit artificial, but we need to force wxDC to think the pen
         // has changed
         wxPen pen = m_pen;
-        m_pen = wxNullPen;
+        m_pen.UnRef();
         SetPen( pen );
     }
 
@@ -2072,7 +2072,7 @@ void wxWindowDCImpl::ComputeScaleAndOrigin()
 // Resolution in pixels per logical inch
 wxSize wxWindowDCImpl::GetPPI() const
 {
-    return wxSize( (int) (m_mm_to_pix_x * 25.4 + 0.5), (int) (m_mm_to_pix_y * 25.4 + 0.5));
+    return wxSize( (int) (GetMMToPXx() * 25.4 + 0.5), (int) (GetMMToPXy() * 25.4 + 0.5));
 }
 
 int wxWindowDCImpl::GetDepth() const

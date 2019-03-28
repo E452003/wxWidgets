@@ -59,9 +59,9 @@ public:
     wxHtmlWinAutoScrollTimer(wxScrolledWindow *win,
                       wxEventType eventTypeToSend,
                       int pos, int orient)
+        : m_eventType(eventTypeToSend)
     {
         m_win = win;
-        m_eventType = eventTypeToSend;
         m_pos = pos;
         m_orient = orient;
     }
@@ -128,7 +128,7 @@ void wxHtmlWinAutoScrollTimer::Notify()
 class WXDLLIMPEXP_HTML wxHtmlHistoryItem
 {
 public:
-    wxHtmlHistoryItem(const wxString& p, const wxString& a) {m_Page = p, m_Anchor = a, m_Pos = 0;}
+    wxHtmlHistoryItem(const wxString& p, const wxString& a) : m_Page(p), m_Anchor(a), m_Pos(0) { }
     int GetPos() const {return m_Pos;}
     void SetPos(int p) {m_Pos = p;}
     const wxString& GetPage() const {return m_Page;}
@@ -310,7 +310,9 @@ void wxHtmlWindow::Init()
 #endif // wxUSE_STATUSBAR
     m_RelatedFrame = NULL;
     m_TitleFormat = wxT("%s");
-    m_OpenedPage = m_OpenedAnchor = m_OpenedPageTitle = wxEmptyString;
+    m_OpenedPage.clear();
+    m_OpenedAnchor.clear();
+    m_OpenedPageTitle.clear();
     m_Cell = NULL;
     m_Parser = new wxHtmlWinParser(this);
     m_Parser->SetFS(m_FS);
@@ -433,7 +435,9 @@ void wxHtmlWindow::SetStandardFonts(int size,
 
 bool wxHtmlWindow::SetPage(const wxString& source)
 {
-    m_OpenedPage = m_OpenedAnchor = m_OpenedPageTitle = wxEmptyString;
+    m_OpenedPage.clear();
+    m_OpenedAnchor.clear();
+    m_OpenedPageTitle.clear();
     return DoSetPage(source);
 }
 
@@ -853,7 +857,7 @@ bool wxHtmlWindow::HistoryForward()
     if (m_HistoryPos == -1) return false;
     if (m_HistoryPos >= (int)m_History->GetCount() - 1)return false;
 
-    m_OpenedPage = wxEmptyString; // this will disable adding new entry into history in LoadPage()
+    m_OpenedPage.clear(); // this will disable adding new entry into history in LoadPage()
 
     m_HistoryPos++;
     l = (*m_History)[m_HistoryPos].GetPage();
@@ -1130,7 +1134,7 @@ void wxHtmlWindow::OnPaint(wxPaintEvent& WXUNUSED(event))
 
     // draw the HTML window contents
     dc->SetMapMode(wxMM_TEXT);
-    dc->SetBackgroundMode(wxTRANSPARENT);
+    dc->SetBackgroundMode(wxBRUSHSTYLE_TRANSPARENT);
     dc->SetLayoutDirection(GetLayoutDirection());
 
     wxHtmlRenderingInfo rinfo;

@@ -14,7 +14,7 @@
 
 #include "wx/dataview.h"
 
-#if !defined(wxUSE_GENERICDATAVIEWCTRL)
+#if !defined(wxHAS_GENERIC_DATAVIEWCTRL)
 
 #ifndef WX_PRECOMP
     #include "wx/app.h"
@@ -539,9 +539,8 @@ outlineView:(NSOutlineView*)outlineView
     item:(id)item childIndex:(NSInteger)index
 {
     wxUnusedVar(outlineView);
-    wxUnusedVar(index);
     
-    return [self setupAndCallDataViewEvents:wxEVT_DATAVIEW_ITEM_DROP dropInfo:info item:item] != NSDragOperationNone;
+    return [self setupAndCallDataViewEvents:wxEVT_DATAVIEW_ITEM_DROP dropInfo:info item:item proposedChildIndex:index] != NSDragOperationNone;
 }
 
 -(id) outlineView:(NSOutlineView*)outlineView
@@ -653,9 +652,12 @@ outlineView:(NSOutlineView*)outlineView
     for (NSUInteger i=0; i<noOfDescriptors; ++i)
     {
         NSSortDescriptor* const newDescriptor = [newDescriptors objectAtIndex:i];
+        wxDataViewColumn* const sortingColumn = dvc->GetColumn([[newDescriptor key] intValue]);
+
+        sortingColumn->SetSortOrderVariable([newDescriptor ascending]);
 
         [wxSortDescriptors addObject:[[[wxSortDescriptorObject alloc] initWithModelPtr:model
-            sortingColumnPtr:dvc->GetColumn([[newDescriptor key] intValue])
+            sortingColumnPtr:sortingColumn
             ascending:[newDescriptor ascending]] autorelease]];
     }
     [(wxCocoaOutlineDataSource*)[outlineView dataSource] setSortDescriptors:wxSortDescriptors];
@@ -678,12 +680,12 @@ outlineView:(NSOutlineView*)outlineView
 -(NSDragOperation) outlineView:(NSOutlineView*)outlineView validateDrop:(id<NSDraggingInfo>)info proposedItem:(id)item proposedChildIndex:(NSInteger)index
 {
     wxUnusedVar(outlineView);
-    wxUnusedVar(index);
 
-    return [self setupAndCallDataViewEvents:wxEVT_DATAVIEW_ITEM_DROP_POSSIBLE dropInfo:info item:item];
+    return [self setupAndCallDataViewEvents:wxEVT_DATAVIEW_ITEM_DROP_POSSIBLE dropInfo:info item:item proposedChildIndex:index];
 }
 
 -(NSDragOperation) callDataViewEvents:(wxEventType)eventType dataObjects:(wxDataObjectComposite*)dataObjects item:(id)item
+                   proposedChildIndex:(NSInteger)index
 {
     NSDragOperation dragOperation = NSDragOperationNone;
     wxDataViewCtrl* const dvc(implementation->GetDataViewCtrl());
@@ -693,7 +695,20 @@ outlineView:(NSOutlineView*)outlineView
         // copy data into data object:
         event.SetDataObject(dataObjects);
         event.SetDataFormat(implementation->GetDnDDataFormat(dataObjects));
-        event.SetDropEffect(wxDragCopy);
+        event.SetProposedDropIndex(index);
+        if (index == -1)
+        {
+            event.SetDropEffect(wxDragCopy);
+        }
+        else
+        {
+            //if index is not -1, we're going to set the default
+            //for the drop effect to None to be compatible with
+            //the other wxPlatforms that don't support it.  In the
+            //user code for for the event, they can set this to
+            //copy/move or similar to support it.
+            event.SetDropEffect(wxDragNone);
+        }
         wxDataFormatId formatId = event.GetDataFormat().GetType();
         wxMemoryBuffer buffer;
         
@@ -745,6 +760,7 @@ outlineView:(NSOutlineView*)outlineView
 }
 
 -(NSDragOperation) setupAndCallDataViewEvents:(wxEventType)eventType dropInfo:(id<NSDraggingInfo>)info item:(id)item
+                           proposedChildIndex:(NSInteger)index
 {
     NSArray* supportedTypes(
                             [NSArray arrayWithObjects:DataViewPboardType,NSStringPboardType,nil]
@@ -774,7 +790,7 @@ outlineView:(NSOutlineView*)outlineView
         {
             wxDataObjectComposite* dataObjects(implementation->GetDnDDataObjects((NSData*)[dataArray objectAtIndex:indexDraggedItem]));
             
-            dragOperation = [self callDataViewEvents:eventType dataObjects:dataObjects item:item];
+            dragOperation = [self callDataViewEvents:eventType dataObjects:dataObjects item:item proposedChildIndex:index];
             
             if ( dragOperation != NSDragOperationNone )
                 ++indexDraggedItem;
@@ -806,7 +822,7 @@ outlineView:(NSOutlineView*)outlineView
             delete textDataObject;
         // send event if data could be copied:
         
-        dragOperation = [self callDataViewEvents:eventType dataObjects:dataObjects item:item];
+        dragOperation = [self callDataViewEvents:eventType dataObjects:dataObjects item:item proposedChildIndex:index];
 
         // clean up:
         ::CFRelease(osxData);
@@ -850,6 +866,7 @@ outlineView:(NSOutlineView*)outlineView
             wxDataViewEvent event(wxEVT_DATAVIEW_ITEM_BEGIN_DRAG, dvc, item);
             itemString = ::ConcatenateDataViewItemValues(dvc, item);
             itemObject->Add(new wxTextDataObject(itemString));
+            event.SetDataObject(itemObject);
             // check if event has not been vetoed:
             if (dvc->HandleWindowEvent(event) && event.IsAllowed() && (event.GetDataObject()->GetFormatCount() > 0))
             {
@@ -1640,6 +1657,7 @@ outlineView:(NSOutlineView*)outlineView
 
     const wxDataViewItem item = wxDataViewItemFromItem([self itemAtRow:[self clickedRow]]);
     wxDataViewEvent event(wxEVT_DATAVIEW_ITEM_ACTIVATED, dvc, item);
+    event.SetColumn( [self clickedColumn] );
     dvc->GetEventHandler()->ProcessEvent(event);
 }
 
@@ -2277,8 +2295,33 @@ wxDataViewItem wxCocoaDataViewControl::GetTopItem() const
 
 wxRect wxCocoaDataViewControl::GetRectangle(const wxDataViewItem& item, const wxDataViewColumn *columnPtr)
 {
-    return wxFromNSRect([m_osxView superview],[m_OutlineView frameOfCellAtColumn:GetColumnPosition(columnPtr)
+    NSView* const parent = [m_osxView superview];
+
+    wxRect r = wxFromNSRect(parent, [m_OutlineView frameOfCellAtColumn:GetColumnPosition(columnPtr)
             row:[m_OutlineView rowForItem:[m_DataSource getDataViewItemFromBuffer:item]]]);
+
+    // For hidden items, i.e. items not shown because their parent is
+    // collapsed, the native method returns rectangles with negative width, but
+    // we're supposed to just return an empty rectangle in this case. To be on
+    // the safe side, also check for the height as well, even if it seems to be
+    // always 0 in this case.
+    if ( r.width < 0 || r.height < 0 )
+        return wxRect();
+
+    // Also adjust the vertical coordinates to use physical window coordinates
+    // instead of the logical ones returned by frameOfCellAtColumn:row:
+    NSScrollView* const scrollView = [m_OutlineView enclosingScrollView];
+    const wxRect
+        visible = wxFromNSRect(parent, scrollView.contentView.visibleRect);
+
+    // We are also supposed to return empty rectangle if the item is not
+    // visible because it is scrolled out of view.
+    if ( r.GetBottom() < visible.GetTop() || r.GetTop() > visible.GetBottom() )
+        return wxRect();
+
+    r.y -= visible.y;
+
+    return r;
 }
 
 bool wxCocoaDataViewControl::IsExpanded(const wxDataViewItem& item) const
@@ -2503,7 +2546,7 @@ void wxCocoaDataViewControl::SetRowHeight(int height)
 
 int wxCocoaDataViewControl::GetDefaultRowHeight() const
 {
-    // Custom setup of NSLayoutManager is necessary to match NSTableView sizing.
+    // Custom setup of NSLayoutManager is necessary to match NSTableView sizing.
     // See https://stackoverflow.com/questions/17095927/dynamically-changing-row-height-after-font-size-of-entire-nstableview-nsoutlin
     NSLayoutManager *lm = [[NSLayoutManager alloc] init];
     [lm setTypesetterBehavior:NSTypesetterBehavior_10_2_WithCompatibility];
@@ -3451,6 +3494,13 @@ void wxDataViewColumn::SetResizeable(bool resizable)
         [m_NativeDataPtr->GetNativeColumnPtr() setResizingMask:NSTableColumnNoResizing];
 }
 
+void wxDataViewColumn::UnsetAsSortKey()
+{
+    NSTableColumn* const tableColumn = m_NativeDataPtr->GetNativeColumnPtr();
+    if ( tableColumn )
+        [tableColumn setSortDescriptorPrototype:nil];
+}
+
 void wxDataViewColumn::SetSortable(bool sortable)
 {
     // wxDataViewColumnBase::SetSortable(sortable);
@@ -3531,6 +3581,6 @@ void wxDataViewColumn::SetNativeData(wxDataViewColumnNativeData* newNativeDataPt
     m_NativeDataPtr = newNativeDataPtr;
 }
 
-#endif // !wxUSE_GENERICDATAVIEWCTRL
+#endif // !defined(wxHAS_GENERIC_DATAVIEWCTRL)
 
 #endif // wxUSE_DATAVIEWCTRL

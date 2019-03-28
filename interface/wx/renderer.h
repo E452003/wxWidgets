@@ -552,7 +552,9 @@ public:
 
     /**
         Returns the size of a check box.
-        The @a win parameter is not used currently and can be @NULL.
+
+        @param win A valid, i.e. non-null, window pointer which is used to get
+            the theme defining the checkbox size under some platforms.
     */
     virtual wxSize GetCheckBoxSize(wxWindow* win) = 0;
 
@@ -633,7 +635,7 @@ public:
 struct wxRendererVersion
 {
     wxRendererVersion(int version_, int age_);
-    
+
     /**
         Checks if the main program is compatible with the renderer having the version
         @e ver, returns @true if it is and @false otherwise.

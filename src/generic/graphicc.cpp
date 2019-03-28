@@ -41,7 +41,7 @@ bool wxCairoInit();
 #include "wx/private/graphics.h"
 #include "wx/rawbmp.h"
 #include "wx/vector.h"
-#if defined(__WXMSW__) && wxUSE_ENH_METAFILE
+#ifdef __WXMSW__
     #include "wx/msw/enhmeta.h"
 #endif
 
@@ -1195,7 +1195,17 @@ void wxCairoPathData::GetBox(wxDouble *x, wxDouble *y, wxDouble *w, wxDouble *h)
 {
     double x1,y1,x2,y2;
 
-    cairo_stroke_extents( m_pathContext, &x1, &y1, &x2, &y2 );
+#if CAIRO_VERSION >= CAIRO_VERSION_ENCODE(1, 6, 0)
+    if ( cairo_version() >= CAIRO_VERSION_ENCODE(1, 6, 0) )
+    {
+        cairo_path_extents(m_pathContext, &x1, &y1, &x2, &y2);
+    }
+    else
+#endif
+    {
+        cairo_stroke_extents(m_pathContext, &x1, &y1, &x2, &y2);
+    }
+
     if ( x2 < x1 )
     {
         *x = x2;
@@ -1820,7 +1830,7 @@ wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, const wxPrinterDC&
 #endif
 
 wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, const wxWindowDC& dc )
-: wxGraphicsContext(renderer)
+: wxGraphicsContext(renderer, dc.GetWindow())
 {
     int width, height;
     dc.GetSize( &width, &height );
@@ -1859,7 +1869,7 @@ wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, const wxWindowDC& 
 #endif
 
 #ifdef __WXQT__
-    m_qtPainter = (QPainter*) dc.GetHandle();
+    m_qtPainter = static_cast<QPainter*>(dc.GetHandle());
     // create a internal buffer (fallback if cairo_qt_surface is missing)
     m_qtImage = new QImage(width, height, QImage::Format_ARGB32_Premultiplied);
     // clear the buffer to be painted over the current contents
@@ -2003,9 +2013,9 @@ wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, const wxMemoryDC& 
         // bug 96482) so in this case we would need to pass non-transformed
         // DC to Cairo and to apply original DC transformation to the Cairo
         // context operations on our own.
-        // We believe this bug will be fixed in the next Cairo version.
-#if CAIRO_VERSION <= CAIRO_VERSION_ENCODE(1, 15, 2)
-        if ( cairo_version() <= CAIRO_VERSION_ENCODE(1, 15, 2) )
+        // Bug 96482 was fixed in Cairo 1.15.12 so this workaround needs
+        // to be applied only for older Cairo versions.
+        if ( cairo_version() < CAIRO_VERSION_ENCODE(1, 15, 12) )
         {
             wxCoord orgX, orgY;
             dc.GetDeviceOrigin(&orgX, &orgY);
@@ -2018,7 +2028,6 @@ wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, const wxMemoryDC& 
                 adjustTransformFromDC = true;
             }
         }
-#endif // Cairo <= 1.15.2
 
 #if CAIRO_VERSION >= CAIRO_VERSION_ENCODE(1, 15, 4)
         if ( cairo_version() >= CAIRO_VERSION_ENCODE(1, 15, 4) )
@@ -2075,7 +2084,7 @@ wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, const wxMemoryDC& 
 #endif
 
 #ifdef __WXQT__
-    m_qtPainter = NULL;
+    m_qtPainter = static_cast<QPainter*>(dc.GetHandle());
     // create a internal buffer (fallback if cairo_qt_surface is missing)
     m_qtImage = new QImage(width, height, QImage::Format_ARGB32_Premultiplied);
     // clear the buffer to be painted over the current contents
@@ -2147,9 +2156,7 @@ wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, HDC handle )
     // bug 96482) so in this case we would need to pass non-transformed
     // DC to Cairo and to apply original DC transformation to the Cairo
     // context operations on our own.
-    // We believe this bug will be fixed in the next Cairo version.
-#if CAIRO_VERSION <= CAIRO_VERSION_ENCODE(1, 15, 2)
-    if ( cairo_version() <= CAIRO_VERSION_ENCODE(1, 15, 2) )
+    if ( cairo_version() < CAIRO_VERSION_ENCODE(1, 15, 12) )
     {
         POINT devOrg;
         ::GetViewportOrgEx(handle, &devOrg);
@@ -2177,7 +2184,6 @@ wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, HDC handle )
             adjustTransformFromDC = true;
         }
     }
-#endif // Cairo <= 1.15.2
     m_mswSurface = cairo_win32_surface_create(handle);
     Init( cairo_create(m_mswSurface) );
     if ( adjustTransformFromDC )
@@ -2228,6 +2234,11 @@ wxCairoContext::wxCairoContext(wxGraphicsRenderer* renderer, HWND hWnd)
 wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, cairo_t *context )
 : wxGraphicsContext(renderer)
 {
+#ifdef __WXQT__
+    m_qtPainter = NULL;
+    m_qtImage = NULL;
+    m_qtSurface = NULL;
+#endif
 #ifdef __WXMSW__
     m_mswSurface = NULL;
     m_mswStateSavedDC = 0;
@@ -2238,7 +2249,7 @@ wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, cairo_t *context )
 }
 
 wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, wxWindow *window)
-    : wxGraphicsContext(renderer)
+    : wxGraphicsContext(renderer, window)
 #ifdef __WXMSW__
     , m_mswWindowHDC(GetHwndOf(window))
 #endif
@@ -2282,6 +2293,11 @@ wxCairoContext::wxCairoContext( wxGraphicsRenderer* renderer, wxWindow *window)
 wxCairoContext::wxCairoContext(wxGraphicsRenderer* renderer) :
     wxGraphicsContext(renderer)
 {
+#ifdef __WXQT__
+    m_qtPainter = NULL;
+    m_qtImage = NULL;
+    m_qtSurface = NULL;
+#endif
 #ifdef __WXMSW__
     m_mswSurface = NULL;
     m_mswStateSavedDC = 0;
@@ -2560,6 +2576,7 @@ void wxCairoContext::Flush()
     if ( m_qtSurface )
     {
         cairo_surface_flush(m_qtSurface);
+        m_qtPainter->drawImage( 0,0, *m_qtImage );
     }
 #endif
 }
@@ -3313,13 +3330,13 @@ wxGraphicsRenderer* wxGraphicsRenderer::GetCairoRenderer()
 
 #endif  // wxUSE_CAIRO/!wxUSE_CAIRO
 
-// MSW and OS X have their own native default renderers, but the other ports
-// use Cairo by default
-#if !(defined(__WXMSW__) || defined(__WXOSX__))
+// MSW and OS X and Qt on Windows have their own native default renderers, but the other ports
+// use Cairo by default.
+#if !(defined(__WXMSW__) || defined(__WXOSX__) || (defined(__WXQT__) && defined(__WIN32__)))
 wxGraphicsRenderer* wxGraphicsRenderer::GetDefaultRenderer()
 {
     return GetCairoRenderer();
 }
-#endif // !(__WXMSW__ || __WXOSX__)
+#endif // !(__WXMSW__ || __WXOSX__ || (defined(__WXQT__) && defined(__WIN32__)))
 
 #endif // wxUSE_GRAPHICS_CONTEXT

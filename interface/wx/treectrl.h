@@ -42,8 +42,11 @@
         flag is ignored under Windows unless you specify @c wxTR_NO_LINES as
         well.)
     @style{wxTR_LINES_AT_ROOT}
-        Use this style to show lines between root nodes. Only applicable if @c
-        wxTR_HIDE_ROOT is set and @c wxTR_NO_LINES is not set.
+        Use this style to show lines leading to the root nodes (unless no
+        @c wxTR_NO_LINES is also used, in which case no lines are shown). Note
+        that in the MSW version, if this style is omitted, not only the lines,
+        but also the button used for expanding the root item is not shown,
+        which can be unexpected, so it is recommended to always use it.
     @style{wxTR_HIDE_ROOT}
         Use this style to suppress the display of the root node, effectively
         causing the first-level nodes to appear as a series of root nodes.
@@ -182,7 +185,7 @@ public:
             Window position.
             If ::wxDefaultPosition is specified then a default position is chosen.
         @param size
-            Window size. 
+            Window size.
             If ::wxDefaultSize is specified then the window is sized appropriately.
         @param style
             Window style. See wxTreeCtrl.
@@ -310,15 +313,19 @@ public:
     virtual void Delete(const wxTreeItemId& item);
 
     /**
-        Deletes all items in the control. Note that this may not generate
-        @c EVT_TREE_DELETE_ITEM events under some Windows versions although
-        normally such event is generated for each removed item.
+        Deletes all items in the control.
+
+        This function generates @c wxEVT_TREE_DELETE_ITEM events for each item
+        being deleted, including the root one if it is shown, i.e. unless
+        wxTR_HIDE_ROOT style is used.
     */
     virtual void DeleteAllItems();
 
     /**
-        Deletes all children of the given item (but not the item itself). Note
-        that this will @b not generate any events unlike Delete() method.
+        Deletes all children of the given item (but not the item itself).
+
+        A @c wxEVT_TREE_DELETE_ITEM event will be generated for every item
+        being deleted.
 
         If you have called SetItemHasChildren(), you may need to call it again
         since DeleteChildren() does not automatically clear the setting.
@@ -463,7 +470,7 @@ public:
         Returns the item last clicked or otherwise selected.
         Unlike GetSelection(), it can be used whether or not
         the control has the @c wxTR_MULTIPLE style.
-        
+
         @since 2.9.1
     */
     virtual wxTreeItemId GetFocusedItem() const;
@@ -640,7 +647,7 @@ public:
     /**
         Returns the selection, or an invalid item if there is no selection. This
         function only works with the controls without @c wxTR_MULTIPLE style,
-        use GetSelections() for the controls which do have this style 
+        use GetSelections() for the controls which do have this style
         or, if a single item is wanted, use GetFocusedItem().
     */
     virtual wxTreeItemId GetSelection() const;

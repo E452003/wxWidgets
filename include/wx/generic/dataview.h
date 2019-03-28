@@ -12,7 +12,6 @@
 
 #include "wx/defs.h"
 #include "wx/object.h"
-#include "wx/list.h"
 #include "wx/control.h"
 #include "wx/scrolwin.h"
 #include "wx/icon.h"
@@ -21,17 +20,17 @@
     #include "wx/access.h"
 #endif // wxUSE_ACCESSIBILITY
 
-class WXDLLIMPEXP_FWD_ADV wxDataViewMainWindow;
-class WXDLLIMPEXP_FWD_ADV wxDataViewHeaderWindow;
+class WXDLLIMPEXP_FWD_CORE wxDataViewMainWindow;
+class WXDLLIMPEXP_FWD_CORE wxDataViewHeaderWindow;
 #if wxUSE_ACCESSIBILITY
-class WXDLLIMPEXP_FWD_ADV wxDataViewCtrlAccessible;
+class WXDLLIMPEXP_FWD_CORE wxDataViewCtrlAccessible;
 #endif // wxUSE_ACCESSIBILITY
 
 // ---------------------------------------------------------
 // wxDataViewColumn
 // ---------------------------------------------------------
 
-class WXDLLIMPEXP_ADV wxDataViewColumn : public wxDataViewColumnBase
+class WXDLLIMPEXP_CORE wxDataViewColumn : public wxDataViewColumnBase
 {
 public:
     wxDataViewColumn(const wxString& title,
@@ -74,6 +73,11 @@ public:
         // UpdateWidth() if the width didn't really change, even if we don't
         // care about its return value.
         (void)WXUpdateWidth(width);
+
+        // Do remember the last explicitly set width: this is used to prevent
+        // UpdateColumnSizes() from resizing the last column to be smaller than
+        // this size.
+        m_manuallySetWidth = width;
     }
     virtual int GetWidth() const wxOVERRIDE;
 
@@ -137,8 +141,14 @@ public:
         m_width = width;
         UpdateWidth();
 
+        // We must not update m_manuallySetWidth here as this method is called by
+        // UpdateColumnSizes() which resizes the column automatically, and not
+        // "manually".
+
         return true;
     }
+
+    int WXGetManuallySetWidth() const { return m_manuallySetWidth; }
 
 private:
     // common part of all ctors
@@ -152,6 +162,7 @@ private:
 
     wxString m_title;
     int m_width,
+        m_manuallySetWidth,
         m_minWidth;
     wxAlignment m_align;
     int m_flags;
@@ -167,10 +178,7 @@ private:
 // wxDataViewCtrl
 // ---------------------------------------------------------
 
-WX_DECLARE_LIST_WITH_DECL(wxDataViewColumn, wxDataViewColumnList,
-                          class WXDLLIMPEXP_ADV);
-
-class WXDLLIMPEXP_ADV wxDataViewCtrl : public wxDataViewCtrlBase,
+class WXDLLIMPEXP_CORE wxDataViewCtrl : public wxDataViewCtrlBase,
                                        public wxScrollHelper
 {
     friend class wxDataViewMainWindow;
@@ -354,7 +362,9 @@ private:
     void InvalidateColBestWidth(int idx);
     void UpdateColWidths();
 
-    wxDataViewColumnList      m_cols;
+    void DoClearColumns();
+
+    wxVector<wxDataViewColumn*> m_cols;
     // cached column best widths information, values are for
     // respective columns from m_cols and the arrays have same size
     struct CachedColWidthInfo
@@ -405,11 +415,11 @@ private:
 // wxDataViewCtrlAccessible
 //-----------------------------------------------------------------------------
 
-class WXDLLIMPEXP_ADV wxDataViewCtrlAccessible: public wxWindowAccessible
+class WXDLLIMPEXP_CORE wxDataViewCtrlAccessible: public wxWindowAccessible
 {
 public:
     wxDataViewCtrlAccessible(wxDataViewCtrl* win);
-    virtual ~wxDataViewCtrlAccessible() {};
+    virtual ~wxDataViewCtrlAccessible() {}
 
     virtual wxAccStatus HitTest(const wxPoint& pt, int* childId,
                                 wxAccessible** childObject) wxOVERRIDE;

@@ -58,8 +58,10 @@
     #include "wx/ownerdrw.h"
 #endif
 
-#include "wx/hashmap.h"
+#include "wx/display.h"
 #include "wx/evtloop.h"
+#include "wx/hashmap.h"
+#include "wx/popupwin.h"
 #include "wx/power.h"
 #include "wx/scopeguard.h"
 #include "wx/sysopt.h"
@@ -133,6 +135,10 @@
 #if wxUSE_MENUS_NATIVE
 extern wxMenu *wxCurrentPopupMenu;
 #endif
+
+#if wxUSE_POPUPWIN
+extern wxPopupWindow* wxCurrentPopupWindow;
+#endif // wxUSE_POPUPWIN
 
 #if wxUSE_UXTHEME
 // This is a hack used by the owner-drawn wxButton implementation to ensure
@@ -1020,6 +1026,17 @@ void wxWindowMSW::MSWUpdateUIState(int action, int state)
     ::SendMessage(GetHwnd(), WM_CHANGEUISTATE, MAKEWPARAM(action, state), 0);
 }
 
+void wxWindowMSW::WXSetPendingFocus(wxWindow* win)
+{
+    for ( wxWindow* parent = this; parent; parent = parent->GetParent() )
+    {
+        parent->WXDoUpdatePendingFocus(win);
+
+        if ( parent->IsTopLevel() )
+            break;
+    }
+}
+
 // ---------------------------------------------------------------------------
 // scrolling stuff
 // ---------------------------------------------------------------------------
@@ -1513,6 +1530,9 @@ WXDWORD wxWindowMSW::MSWGetStyle(long flags, WXDWORD *exstyle) const
     // wxTopLevelWindow) should remove WS_CHILD in their MSWGetStyle()
     WXDWORD style = WS_CHILD;
 
+    if ( !IsThisEnabled() )
+        style |= WS_DISABLED;
+
     // using this flag results in very significant reduction in flicker,
     // especially with controls inside the static boxes (as the interior of the
     // box is not redrawn twice), but sometimes results in redraw problems, so
@@ -1556,7 +1576,7 @@ WXDWORD wxWindowMSW::MSWGetStyle(long flags, WXDWORD *exstyle) const
             default:
             case wxBORDER_DEFAULT:
                 wxFAIL_MSG( wxT("unknown border style") );
-                // fall through
+                wxFALLTHROUGH;
 
             case wxBORDER_NONE:
             case wxBORDER_SIMPLE:
@@ -2252,7 +2272,7 @@ wxSize wxWindowMSW::DoGetBorderSize() const
 
         default:
             wxFAIL_MSG( wxT("unknown border style") );
-            // fall through
+            wxFALLTHROUGH;
 
         case wxBORDER_NONE:
             border = 0;
@@ -2535,7 +2555,7 @@ bool wxWindowMSW::MSWProcessMessage(WXMSG* pMsg)
 
                 case VK_PRIOR:
                     bForward = false;
-                    // fall through
+                    wxFALLTHROUGH;
 
                 case VK_NEXT:
                     // we treat PageUp/Dn as arrows because chances are that
@@ -3133,19 +3153,6 @@ wxWindowMSW::MSWHandleMessage(WXLRESULT *result,
             }
             break;
 
-        case MM_JOY1MOVE:
-        case MM_JOY2MOVE:
-        case MM_JOY1ZMOVE:
-        case MM_JOY2ZMOVE:
-        case MM_JOY1BUTTONDOWN:
-        case MM_JOY2BUTTONDOWN:
-        case MM_JOY1BUTTONUP:
-        case MM_JOY2BUTTONUP:
-            processed = HandleJoystickEvent(message,
-                                            LOWORD(lParam),
-                                            HIWORD(lParam),
-                                            wParam);
-            break;
 
         case WM_COMMAND:
             {
@@ -3690,6 +3697,23 @@ wxWindowMSW::MSWHandleMessage(WXLRESULT *result,
             }
             break;
 
+        case WM_NCACTIVATE:
+            // When we're losing activation to our own popup window, we want to
+            // retain the "active" appearance of the title bar, as dropping
+            // down a combobox popup shouldn't deactivate the window containing
+            // the combobox, for example. Explicitly calling DefWindowProc() to
+            // draw the window as active seems to be the only way of achieving
+            // this (thanks to Barmak Shemirani for suggesting it at
+            // https://stackoverflow.com/a/52808753/15275).
+            if ( !wParam &&
+                    wxCurrentPopupWindow &&
+                        wxCurrentPopupWindow->MSWGetOwner() == this )
+            {
+                rc.result = MSWDefWindowProc(message, TRUE, lParam);
+                processed = true;
+            }
+            break;
+
 #if wxUSE_UXTHEME
         // If we want the default themed border then we need to draw it ourselves
         case WM_NCCALCSIZE:
@@ -3716,7 +3740,12 @@ wxWindowMSW::MSWHandleMessage(WXLRESULT *result,
                     }
 
                     wxUxThemeHandle hTheme((const wxWindow *)this, L"EDIT");
-                    RECT rcClient = { 0, 0, 0, 0 };
+
+                    // There is no need to initialize rcClient: either it will
+                    // be done by GetThemeBackgroundContentRect() or we'll do
+                    // it below if it fails.
+                    RECT rcClient;
+
                     wxClientDC dc((wxWindow *)this);
                     wxMSWDCImpl *impl = (wxMSWDCImpl*) dc.GetImpl();
 
@@ -3725,20 +3754,25 @@ wxWindowMSW::MSWHandleMessage(WXLRESULT *result,
                                  hTheme,
                                  GetHdcOf(*impl),
                                  EP_EDITTEXT,
-                                 ETS_NORMAL,
+                                 IsEnabled() ? ETS_NORMAL : ETS_DISABLED,
                                  rect,
-                                 &rcClient) == S_OK )
+                                 &rcClient) != S_OK )
                     {
-                        InflateRect(&rcClient, -1, -1);
-                        if (wParam)
-                            csparam->rgrc[0] = rcClient;
-                        else
-                            *((RECT*)lParam) = rcClient;
-
-                        // WVR_REDRAW triggers a bug whereby child windows are moved up and left,
-                        // so don't use.
-                        // rc.result = WVR_REDRAW;
+                        // If GetThemeBackgroundContentRect() failed, as can
+                        // happen with at least some custom themes, just use
+                        // the original client rectangle.
+                        rcClient = *rect;
                     }
+
+                    InflateRect(&rcClient, -1, -1);
+                    if (wParam)
+                        csparam->rgrc[0] = rcClient;
+                    else
+                        *((RECT*)lParam) = rcClient;
+
+                    // WVR_REDRAW triggers a bug whereby child windows are moved up and left,
+                    // so don't use.
+                    // rc.result = WVR_REDRAW;
                 }
             }
             break;
@@ -3761,28 +3795,37 @@ wxWindowMSW::MSWHandleMessage(WXLRESULT *result,
                     wxCopyRectToRECT(GetSize(), rcBorder);
 
                     RECT rcClient;
-                    ::GetThemeBackgroundContentRect(
-                        hTheme, GetHdcOf(*impl), EP_EDITTEXT, ETS_NORMAL, &rcBorder, &rcClient);
+
+                    const int nState = IsEnabled() ? ETS_NORMAL : ETS_DISABLED;
+
+                    if ( ::GetThemeBackgroundContentRect
+                                (
+                                 hTheme,
+                                 GetHdcOf(*impl),
+                                 EP_EDITTEXT,
+                                 nState,
+                                 &rcBorder,
+                                 &rcClient
+                                ) != S_OK )
+                    {
+                        // As above in WM_NCCALCSIZE, fall back on something
+                        // reasonable for themes which don't implement this
+                        // function.
+                        rcClient = rcBorder;
+                    }
+
                     InflateRect(&rcClient, -1, -1);
 
                     ::ExcludeClipRect(GetHdcOf(*impl), rcClient.left, rcClient.top,
                                       rcClient.right, rcClient.bottom);
 
                     // Make sure the background is in a proper state
-                    if (::IsThemeBackgroundPartiallyTransparent(hTheme, EP_EDITTEXT, ETS_NORMAL))
+                    if (::IsThemeBackgroundPartiallyTransparent(hTheme, EP_EDITTEXT, nState))
                     {
                         ::DrawThemeParentBackground(GetHwnd(), GetHdcOf(*impl), &rcBorder);
                     }
 
                     // Draw the border
-                    int nState;
-                    if ( !IsEnabled() )
-                        nState = ETS_DISABLED;
-                    // should we check this?
-                    //else if ( ::GetWindowLong(GetHwnd(), GWL_STYLE) & ES_READONLY)
-                    //    nState = ETS_READONLY;
-                    else
-                        nState = ETS_NORMAL;
                     ::DrawThemeBackground(hTheme, GetHdcOf(*impl), EP_EDITTEXT, nState, &rcBorder, NULL);
                 }
             }
@@ -4493,7 +4536,7 @@ bool wxWindowMSW::HandlePower(WXWPARAM wParam,
 
         default:
             wxLogDebug(wxT("Unknown WM_POWERBROADCAST(%d) event"), wParam);
-            // fall through
+            wxFALLTHROUGH;
 
         // these messages are currently not mapped to wx events
         case PBT_APMQUERYSTANDBY:
@@ -4680,6 +4723,8 @@ bool wxWindowMSW::HandleSysColorChange()
 
 bool wxWindowMSW::HandleDisplayChange()
 {
+    wxDisplay::InvalidateCache();
+
     wxDisplayChangedEvent event;
     event.SetEventObject(this);
 
@@ -5097,7 +5142,7 @@ bool wxWindowMSW::HandleEraseBkgnd(WXHDC hdc)
                     return true;
                 }
             }
-            // fall through
+            wxFALLTHROUGH;
 
         case wxBG_STYLE_SYSTEM:
             if ( !DoEraseBackground(hdc) )
@@ -6162,92 +6207,6 @@ bool wxWindowMSW::HandleClipboardEvent(WXUINT nMsg)
     return HandleWindowEvent(evt);
 }
 
-// ---------------------------------------------------------------------------
-// joystick
-// ---------------------------------------------------------------------------
-
-bool wxWindowMSW::HandleJoystickEvent(WXUINT msg, int x, int y, WXUINT flags)
-{
-    int change = 0;
-    if ( flags & JOY_BUTTON1CHG )
-        change = wxJOY_BUTTON1;
-    if ( flags & JOY_BUTTON2CHG )
-        change = wxJOY_BUTTON2;
-    if ( flags & JOY_BUTTON3CHG )
-        change = wxJOY_BUTTON3;
-    if ( flags & JOY_BUTTON4CHG )
-        change = wxJOY_BUTTON4;
-
-    int buttons = 0;
-    if ( flags & JOY_BUTTON1 )
-        buttons |= wxJOY_BUTTON1;
-    if ( flags & JOY_BUTTON2 )
-        buttons |= wxJOY_BUTTON2;
-    if ( flags & JOY_BUTTON3 )
-        buttons |= wxJOY_BUTTON3;
-    if ( flags & JOY_BUTTON4 )
-        buttons |= wxJOY_BUTTON4;
-
-    // the event ids aren't consecutive so we can't use table based lookup
-    int joystick;
-    wxEventType eventType;
-    switch ( msg )
-    {
-        case MM_JOY1MOVE:
-            joystick = 1;
-            eventType = wxEVT_JOY_MOVE;
-            break;
-
-        case MM_JOY2MOVE:
-            joystick = 2;
-            eventType = wxEVT_JOY_MOVE;
-            break;
-
-        case MM_JOY1ZMOVE:
-            joystick = 1;
-            eventType = wxEVT_JOY_ZMOVE;
-            break;
-
-        case MM_JOY2ZMOVE:
-            joystick = 2;
-            eventType = wxEVT_JOY_ZMOVE;
-            break;
-
-        case MM_JOY1BUTTONDOWN:
-            joystick = 1;
-            eventType = wxEVT_JOY_BUTTON_DOWN;
-            break;
-
-        case MM_JOY2BUTTONDOWN:
-            joystick = 2;
-            eventType = wxEVT_JOY_BUTTON_DOWN;
-            break;
-
-        case MM_JOY1BUTTONUP:
-            joystick = 1;
-            eventType = wxEVT_JOY_BUTTON_UP;
-            break;
-
-        case MM_JOY2BUTTONUP:
-            joystick = 2;
-            eventType = wxEVT_JOY_BUTTON_UP;
-            break;
-
-        default:
-            wxFAIL_MSG(wxT("no such joystick event"));
-
-            return false;
-    }
-
-    wxJoystickEvent event(eventType, buttons, joystick, change);
-    if ( eventType == wxEVT_JOY_ZMOVE )
-        event.SetZPosition(x);
-    else
-        event.SetPosition(wxPoint(x, y));
-    event.SetEventObject(this);
-
-    return HandleWindowEvent(event);
-}
 
 // ---------------------------------------------------------------------------
 // scrolling

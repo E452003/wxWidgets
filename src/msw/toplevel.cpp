@@ -579,6 +579,15 @@ bool wxTopLevelWindowMSW::Show(bool show)
     }
     else // hide
     {
+        // When hiding the window, remember if it was maximized or iconized in
+        // order to return the correct value from Is{Maximized,Iconized}().
+        if ( ::IsZoomed(GetHwnd()) )
+            m_showCmd = SW_MAXIMIZE;
+        else if ( ::IsIconic(GetHwnd()) )
+            m_showCmd = SW_MINIMIZE;
+        else
+            m_showCmd = SW_SHOW;
+
         nShowCmd = SW_HIDE;
     }
 
@@ -595,6 +604,16 @@ bool wxTopLevelWindowMSW::Show(bool show)
 #endif // wxUSE_DEFERRED_SIZING
 
     DoShowWindow(nShowCmd);
+
+    if ( show && nShowCmd == SW_MAXIMIZE )
+    {
+        // We don't receive WM_SHOWWINDOW when shown in the maximized state,
+        // cf. https://docs.microsoft.com/en-us/windows/desktop/winmsg/wm-showwindow
+        // and so we have to issue the event ourselves in this case.
+        wxShowEvent event(GetId(), true);
+        event.SetEventObject(this);
+        AddPendingEvent(event);
+    }
 
     return true;
 }
@@ -747,8 +766,7 @@ void wxTopLevelWindowMSW::DoGetPosition(int *x, int *y) const
             {
                 // we must use the correct display for the translation as the
                 // task bar might be shown on one display but not the other one
-                int n = wxDisplay::GetFromWindow(this);
-                wxDisplay dpy(n == wxNOT_FOUND ? 0 : n);
+                wxDisplay dpy(this);
                 const wxPoint ptOfs = dpy.GetClientArea().GetPosition() -
                                       dpy.GetGeometry().GetPosition();
 
@@ -905,20 +923,9 @@ bool wxTopLevelWindowMSW::ShowFullScreen(bool show, long style)
         // change our window style to be compatible with full-screen mode
         updateStyle.Apply();
 
-        wxRect rect;
-#if wxUSE_DISPLAY
-        // resize to the size of the display containing us
-        int dpy = wxDisplay::GetFromWindow(this);
-        if ( dpy != wxNOT_FOUND )
-        {
-            rect = wxDisplay(dpy).GetGeometry();
-        }
-        else // fall back to the main desktop
-#endif // wxUSE_DISPLAY
-        {
-            // resize to the size of the desktop
-            wxCopyRECTToRect(wxGetWindowRect(::GetDesktopWindow()), rect);
-        }
+        // resize to the size of the display containing us, falling back to the
+        // primary one
+        const wxRect rect = wxDisplay(this).GetGeometry();
 
         SetSize(rect);
 

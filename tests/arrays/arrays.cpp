@@ -96,6 +96,17 @@ WX_DECLARE_OBJARRAY(Bar, ArrayBars);
 WX_DEFINE_OBJARRAY(ArrayBars)
 
 // ----------------------------------------------------------------------------
+// another object array test
+// ----------------------------------------------------------------------------
+
+// This code doesn't make any sense, as object arrays should be used with
+// objects, not pointers, but it used to work, so check that it continues to
+// compile.
+WX_DECLARE_OBJARRAY(Bar*, ArrayBarPtrs);
+#include "wx/arrimpl.cpp"
+WX_DEFINE_OBJARRAY(ArrayBarPtrs)
+
+// ----------------------------------------------------------------------------
 // helpers for sorting arrays and comparing items
 // ----------------------------------------------------------------------------
 
@@ -165,6 +176,7 @@ private:
         CPPUNIT_TEST( wxStringArraySplitJoinTest );
 
         CPPUNIT_TEST( wxObjArrayTest );
+        CPPUNIT_TEST( wxObjArrayPtrTest );
         CPPUNIT_TEST( wxArrayUShortTest );
         CPPUNIT_TEST( wxArrayIntTest );
         CPPUNIT_TEST( wxArrayCharTest );
@@ -181,6 +193,7 @@ private:
     void wxStringArrayJoinTest();
     void wxStringArraySplitJoinTest();
     void wxObjArrayTest();
+    void wxObjArrayPtrTest();
     void wxArrayUShortTest();
     void wxArrayIntTest();
     void wxArrayCharTest();
@@ -351,12 +364,18 @@ void ArraysTestCase::wxStringArrayTest()
     a6.Add("Foo");
     a6.Insert(a6[0], 1, 100);
 
+    // The whole point of this code is to test self-assignment, so suppress
+    // clang warning about it.
+    wxCLANG_WARNING_SUPPRESS(self-assign-overloaded)
+
     wxArrayString a7;
     a7 = a7;
     CPPUNIT_ASSERT_EQUAL( 0, a7.size() );
     a7.Add("Bar");
     a7 = a7;
     CPPUNIT_ASSERT_EQUAL( 1, a7.size() );
+
+    wxCLANG_WARNING_RESTORE(self-assign-overloaded)
 }
 
 void ArraysTestCase::SortedArray()
@@ -565,6 +584,13 @@ void ArraysTestCase::wxObjArrayTest()
         CPPUNIT_ASSERT_EQUAL( 1, Bar::GetNumber() );
     }
     CPPUNIT_ASSERT_EQUAL( 0, Bar::GetNumber() );
+}
+
+void ArraysTestCase::wxObjArrayPtrTest()
+{
+    // Just check that instantiating this class compiles.
+    ArrayBarPtrs barptrs;
+    CPPUNIT_ASSERT_EQUAL( 0, barptrs.size() );
 }
 
 #define TestArrayOf(name)                                                     \

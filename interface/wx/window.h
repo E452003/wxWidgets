@@ -257,7 +257,7 @@ enum wxWindowVariant
     @style{wxWS_EX_BLOCK_EVENTS}
            wxCommandEvents and the objects of the derived classes are
            forwarded to the parent window and so on recursively by default.
-           Using this flag for the given window allows to block this
+           Using this flag for the given window allows blocking this
            propagation at this window, i.e. prevent the events from being
            propagated further upwards. Dialogs have this flag on by default
            for the reasons explained in the @ref overview_events.
@@ -358,6 +358,7 @@ public:
             Pointer to a parent window.
         @param id
             Window identifier. If wxID_ANY, will automatically create an identifier.
+            See @ref overview_windowids for more information about IDs.
         @param pos
             Window position. wxDefaultPosition indicates that wxWidgets
             should generate a default position for the window.
@@ -391,6 +392,63 @@ public:
     virtual ~wxWindow();
 
 
+    /**
+        Construct the actual window object after creating the C++ object.
+
+        The non-default constructor of wxWindow class does two things: it
+        initializes the C++ object and it also creates the window object in the
+        underlying graphical toolkit. The Create() method can be used to
+        perform the second part later, while the default constructor can be
+        used to perform the first part only.
+
+        Please note that the underlying window must be created exactly once,
+        i.e. if you use the default constructor, which doesn't do this, you @em
+        must call Create() before using the window and if you use the
+        non-default constructor, you can @em not call Create(), as the
+        underlying window is already created.
+
+        Note that it is possible and, in fact, useful, to call some methods on
+        the object between creating the C++ object itself and calling Create()
+        on it, e.g. a common pattern to avoid showing the contents of a window
+        before it is fully initialized is:
+        @code
+            wxPanel* panel = new wxPanel(); // Note: default constructor used.
+            panel->Hide(); // Can be called before actually creating it.
+            panel->Create(parent, wxID_ANY, ...); // Won't be shown yet.
+            ... create all the panel children ...
+            panel->Show(); // Now everything will be shown at once.
+        @endcode
+
+        Also note that it is possible to create an object of a derived type and
+        then call Create() on it:
+        @code
+            // Suppose we have this function (which would typically be in a
+            // different translation unit (file) from the rest of the code).
+            wxWindow* MyCreateWindowObjectFunction() {
+                return new MyCustomClassDerivingFromWindow();
+            }
+
+            // Then we can create a window of MyCustomClassDerivingFromWindow
+            // class without really knowing about this type, as we would have
+            // to do if we wanted to use the non-default constructor, like this:
+
+            // First create the C++ object using the factory function.
+            wxWindow* window = MyCreateWindowObjectFunction();
+
+            // And now create the underlying window.
+            //
+            // This calls the base wxWindow::Create() as it is not virtual, so
+            // the derived class can't customize this part.
+            window->Create(parent, wxID_ANY, ...);
+        @endcode
+        This is notably used by @ref overview_xrc.
+
+        The parameters of this method have exactly the same meaning as the
+        non-default constructor parameters, please refer to them for their
+        description.
+
+        @return @true if window creation succeeded or @false if it failed
+     */
     bool Create(wxWindow *parent,
                 wxWindowID id,
                 const wxPoint& pos = wxDefaultPosition,
@@ -428,7 +486,7 @@ public:
         container windows.
      */
     virtual bool AcceptsFocusRecursively() const;
-    
+
     /**
      Can this window itself have focus?
     */
@@ -436,7 +494,7 @@ public:
 
     /**
        Can this window have focus right now?
-        
+
        If this method returns true, it means that calling SetFocus() will
        put focus either to this window or one of its children, if you need
        to know whether this window accepts focus itself, use IsFocusable()
@@ -1352,7 +1410,7 @@ public:
     InformFirstDirection(int direction,
                          int size,
                          int availableOtherDir);
-    
+
     /**
         Resets the cached best size value so it will be recalculated the next time it
         is needed.
@@ -1735,7 +1793,7 @@ public:
     wxRect GetClientRect() const;
 
 
-    
+
     /**
         Moves the window to the given position.
 
@@ -2776,6 +2834,14 @@ public:
         disabled, all of its children are disabled as well and they are reenabled again
         when the parent is.
 
+        A window can be created initially disabled by calling this method on it
+        @e before calling Create() to create the actual underlying window, e.g.
+        @code
+            wxWindow* w = new MyWindow(); // Note: default ctor is used here.
+            w->Enable(false);
+            w->Create(parent, ... all the usual non-default ctor arguments ...);
+        @endcode
+
         @param enable
             If @true, enables the window for input. If @false, disables the window.
 
@@ -3543,7 +3609,7 @@ public:
     */
     wxBorder GetBorder() const;
 
-    
+
     /**
         Does the window-specific updating after processing the update event.
         This function is called by UpdateWindowUI() in order to check return
@@ -3655,7 +3721,7 @@ public:
     */
     virtual bool IsTopLevel() const;
 
-    
+
     /**
         This virtual function is normally only used internally, but
         sometimes an application may need it to implement functionality

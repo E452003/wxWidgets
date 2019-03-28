@@ -52,7 +52,7 @@ public:
                 const wxValidator& validator = wxDefaultValidator,
                 const wxString& name = wxComboBoxNameStr);
 
-    virtual void SetSelection(int n) wxOVERRIDE { wxChoice::SetSelection(n); }
+    virtual void SetSelection(int n) wxOVERRIDE;
     virtual void SetSelection(long from, long to) wxOVERRIDE;
 
     virtual int GetSelection() const wxOVERRIDE { return wxChoice::GetSelection(); }
@@ -63,15 +63,19 @@ public:
         return wxItemContainer::GetStringSelection();
     }
 
-    virtual void Clear() wxOVERRIDE
-    {
-        wxTextEntry::Clear();
-        wxItemContainer::Clear();
-    }
+    virtual void Clear() wxOVERRIDE;
 
     // See wxComboBoxBase discussion of IsEmpty().
     bool IsListEmpty() const { return wxItemContainer::IsEmpty(); }
     bool IsTextEmpty() const { return wxTextEntry::IsEmpty(); }
+
+    virtual void SetValue(const wxString& value) wxOVERRIDE;
+    virtual void ChangeValue(const wxString& value) wxOVERRIDE;
+    virtual void AppendText(const wxString &value) wxOVERRIDE;
+    virtual void Replace(long from, long to, const wxString &value) wxOVERRIDE;
+    virtual void WriteText(const wxString &value) wxOVERRIDE;
+    virtual void SetInsertionPoint(long insertion) wxOVERRIDE;
+    virtual long GetInsertionPoint() const wxOVERRIDE;
 
     virtual void Popup();
     virtual void Dismiss();
@@ -82,6 +86,8 @@ protected:
     virtual wxString DoGetValue() const wxOVERRIDE;
 
 private:
+    void SetActualValue(const wxString& value);
+    bool IsReadOnly() const;
 
     // From wxTextEntry:
     virtual wxWindow *GetEditableWindow() wxOVERRIDE { return this; }

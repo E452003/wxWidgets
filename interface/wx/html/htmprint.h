@@ -136,15 +136,15 @@ public:
         Sets font sizes to be relative to the given size or the system
         default size; use either specified or default font
 
-        @param size 
+        @param size
             Point size of the default HTML text
         @param normal_face
-            This is face name for normal (i.e. non-fixed) font. It can be 
-            either empty string (then the default face is chosen) or 
-            platform-specific face name. Examples are "helvetica" under 
+            This is face name for normal (i.e. non-fixed) font. It can be
+            either empty string (then the default face is chosen) or
+            platform-specific face name. Examples are "helvetica" under
             Unix or "Times New Roman" under Windows.
         @param fixed_face
-            The same thing for fixed face ( \<TT\>..\</TT\> ) 
+            The same thing for fixed face ( \<TT\>..\</TT\> )
 
         @see SetSize()
     */
@@ -167,6 +167,19 @@ public:
     void SetHtmlText(const wxString& html,
                      const wxString& basepath = wxEmptyString,
                      bool isdir = true);
+
+    /**
+        Associate the given HTML contents to the renderer.
+
+        This is similar to SetHtmlText(), but is more efficient as the text can
+        be parsed only once, using wxHtmlParser::Parse(), and then passed to
+        wxHtmlDCRenderer multiple times or already reused for other purposes.
+
+        Note that @a cell will be modified (e.g. laid out) by this function.
+
+        @since 3.1.2
+     */
+    void SetHtmlCell(wxHtmlContainerCell& cell);
 
     /**
         Set size of output rectangle, in pixels. Note that you @b can't change
@@ -288,7 +301,7 @@ public:
     */
     void SetFonts(const wxString& normal_face, const wxString& fixed_face,
                   const int* sizes = NULL);
-  
+
     /**
         Sets the name used for preview frames and setup dialogs.
 
@@ -297,7 +310,7 @@ public:
     void SetName(const wxString& name);
 
     /**
-        Sets default font sizes and/or default font size. 
+        Sets default font sizes and/or default font size.
         See wxHtmlDCRenderer::SetStandardFonts for detailed description.
         @see SetFonts()
     */

@@ -147,6 +147,7 @@ private:
     void OnShowAttributes( wxCommandEvent &event);
 
     void OnMultipleSort( wxCommandEvent &event);
+    void OnSortByFirstColumn( wxCommandEvent &event);
 
 #if wxUSE_DRAG_AND_DROP
     void OnBeginDrag( wxDataViewEvent &event );
@@ -164,11 +165,12 @@ private:
 
     // the controls stored in the various tabs of the main notebook:
 
-    wxDataViewCtrl* m_ctrl[4];
+    wxDataViewCtrl* m_ctrl[5];
 
     // the models associated with the first two DVC:
 
     wxObjectDataPtr<MyMusicTreeModel> m_music_model;
+    wxObjectDataPtr<MyLongMusicTreeModel> m_long_music_model;
     wxObjectDataPtr<MyListModel> m_list_model;
 
     // other data:
@@ -286,6 +288,53 @@ private:
 };
 
 
+// ----------------------------------------------------------------------------
+// MultiLineCustomRenderer
+// ----------------------------------------------------------------------------
+
+class MultiLineCustomRenderer : public wxDataViewCustomRenderer
+{
+public:
+    // a simple renderer that wraps each word on a new line
+    explicit MultiLineCustomRenderer()
+        : wxDataViewCustomRenderer("string", wxDATAVIEW_CELL_INERT, 0)
+    { }
+
+    virtual bool Render(wxRect rect, wxDC *dc, int state) wxOVERRIDE
+    {
+        RenderText(m_value, 0, rect, dc, state);
+        return true;
+    }
+
+    virtual wxSize GetSize() const wxOVERRIDE
+    {
+        wxSize txtSize = GetTextExtent(m_value);
+        int lines = m_value.Freq('\n') + 1;
+        txtSize.SetHeight(txtSize.GetHeight() * lines);
+        return txtSize;
+    }
+
+    virtual bool SetValue(const wxVariant &value) wxOVERRIDE
+    {
+        m_value = value.GetString();
+        m_value.Replace(" ", "\n");
+        return true;
+    }
+
+    virtual bool GetValue(wxVariant &WXUNUSED(value)) const wxOVERRIDE { return true; }
+
+#if wxUSE_ACCESSIBILITY
+    virtual wxString GetAccessibleDescription() const wxOVERRIDE
+    {
+        return m_value;
+    }
+#endif // wxUSE_ACCESSIBILITY
+
+private:
+    wxString m_value;
+};
+
+
 // ============================================================================
 // implementation
 // ============================================================================
@@ -363,6 +412,7 @@ enum
     ID_HIDE_ATTRIBUTES  = 204,
     ID_SHOW_ATTRIBUTES  = 205,
     ID_MULTIPLE_SORT    = 206,
+    ID_SORT_BY_FIRST_COLUMN,
 
     // Fourth page.
     ID_DELETE_TREE_ITEM = 400,
@@ -407,7 +457,8 @@ wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_BUTTON( ID_HIDE_ATTRIBUTES, MyFrame::OnHideAttributes)
     EVT_BUTTON( ID_SHOW_ATTRIBUTES, MyFrame::OnShowAttributes)
     EVT_CHECKBOX( ID_MULTIPLE_SORT, MyFrame::OnMultipleSort)
-    
+    EVT_CHECKBOX( ID_SORT_BY_FIRST_COLUMN, MyFrame::OnSortByFirstColumn)
+
     // Fourth page.
     EVT_BUTTON( ID_DELETE_TREE_ITEM, MyFrame::OnDeleteTreeItem )
     EVT_BUTTON( ID_DELETE_ALL_TREE_ITEMS, MyFrame::OnDeleteAllTreeItems )
@@ -456,6 +507,7 @@ MyFrame::MyFrame(wxFrame *frame, const wxString &title, int x, int y, int w, int
     m_ctrl[1] = NULL;
     m_ctrl[2] = NULL;
     m_ctrl[3] = NULL;
+    m_ctrl[4] = NULL;
 
     m_eventFromProgram = false;
 
@@ -559,12 +611,17 @@ MyFrame::MyFrame(wxFrame *frame, const wxString &title, int x, int y, int w, int
     button_sizer2->Add( new wxButton( secondPanel, ID_ADD_MANY,    "Add 1000"),               0, wxALL, 10 );
     button_sizer2->Add( new wxButton( secondPanel, ID_HIDE_ATTRIBUTES,    "Hide attributes"), 0, wxALL, 10 );
     button_sizer2->Add( new wxButton( secondPanel, ID_SHOW_ATTRIBUTES,    "Show attributes"), 0, wxALL, 10 );
-    button_sizer2->Add( new wxCheckBox(secondPanel, ID_MULTIPLE_SORT, "Allow multisort"),
-                        wxSizerFlags().Centre().DoubleBorder() );
+
+    wxBoxSizer *sortSizer = new wxBoxSizer(wxHORIZONTAL);
+    sortSizer->Add(new wxCheckBox(secondPanel, ID_SORT_BY_FIRST_COLUMN, "Sort by first column"),
+                   wxSizerFlags().Centre().DoubleBorder());
+    sortSizer->Add(new wxCheckBox(secondPanel, ID_MULTIPLE_SORT, "Allow multisort"),
+                   wxSizerFlags().Centre().DoubleBorder());
 
     wxSizer *secondPanelSz = new wxBoxSizer( wxVERTICAL );
     secondPanelSz->Add(m_ctrl[1], 1, wxGROW|wxALL, 5);
     secondPanelSz->Add(button_sizer2);
+    secondPanelSz->Add(sortSizer);
     secondPanel->SetSizerAndFit(secondPanelSz);
 
 
@@ -598,6 +655,16 @@ MyFrame::MyFrame(wxFrame *frame, const wxString &title, int x, int y, int w, int
     fourthPanelSz->Add(button_sizer4);
     fourthPanel->SetSizerAndFit(fourthPanelSz);
 
+    // fifth page of the notebook
+    // ---------------------------
+
+    wxPanel *fifthPanel = new wxPanel(m_notebook, wxID_ANY);
+
+    BuildDataViewCtrl(fifthPanel, 4);    // sets m_ctrl[4]
+
+    wxSizer *fifthPanelSz = new wxBoxSizer(wxVERTICAL);
+    fifthPanelSz->Add(m_ctrl[4], 1, wxGROW | wxALL, 5);
+    fifthPanel->SetSizerAndFit(fifthPanelSz);
 
 
     // complete GUI
@@ -607,6 +674,7 @@ MyFrame::MyFrame(wxFrame *frame, const wxString &title, int x, int y, int w, int
     m_notebook->AddPage(secondPanel, "MyListModel");
     m_notebook->AddPage(thirdPanel, "wxDataViewListCtrl");
     m_notebook->AddPage(fourthPanel, "wxDataViewTreeCtrl");
+    m_notebook->AddPage(fifthPanel, "wxDataViewTreeCtrl Variable line height");
 
     wxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
 
@@ -717,6 +785,11 @@ void MyFrame::BuildDataViewCtrl(wxPanel* parent, unsigned int nPanel, unsigned l
             m_list_model = new MyListModel;
             m_ctrl[1]->AssociateModel( m_list_model.get() );
 
+            m_ctrl[1]->AppendToggleColumn(L"\u2714",
+                                          MyListModel::Col_Toggle,
+                                          wxDATAVIEW_CELL_ACTIVATABLE,
+                                          wxCOL_WIDTH_AUTOSIZE);
+
             // the various columns
             m_ctrl[1]->AppendTextColumn("editable string",
                                         MyListModel::Col_EditableText,
@@ -780,7 +853,7 @@ void MyFrame::BuildDataViewCtrl(wxPanel* parent, unsigned int nPanel, unsigned l
             lc->AppendColumn(colRadio, "bool");
 
             lc->AppendTextColumn( "Text" );
-            lc->AppendProgressColumn( "Progress" );
+            lc->AppendProgressColumn( "Progress" )->SetMinWidth(100);
 
             wxVector<wxVariant> data;
             for (unsigned int i=0; i<10; i++)
@@ -824,6 +897,35 @@ void MyFrame::BuildDataViewCtrl(wxPanel* parent, unsigned int nPanel, unsigned l
             tc->Expand(cont);
         }
         break;
+
+    case 4:
+    {
+        wxASSERT(!m_ctrl[4] && !m_long_music_model);
+        m_ctrl[4] =
+            new wxDataViewCtrl( parent, wxID_ANY, wxDefaultPosition,
+                                wxDefaultSize, style | wxDV_VARIABLE_LINE_HEIGHT );
+
+        m_long_music_model = new MyLongMusicTreeModel;
+        m_ctrl[4]->AssociateModel(m_long_music_model.get());
+
+        // column 0 of the view control:
+        MultiLineCustomRenderer *tr =
+            new MultiLineCustomRenderer();
+        wxDataViewColumn *column0 =
+            new wxDataViewColumn("title", tr, 0, 200, wxALIGN_LEFT,
+                wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_RESIZABLE);
+        m_ctrl[4]->AppendColumn(column0);
+
+        // column 1 of the view control:
+        tr = new MultiLineCustomRenderer();
+        wxDataViewColumn *column1 =
+            new wxDataViewColumn("artist", tr, 1, 150, wxALIGN_LEFT,
+                wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE |
+                wxDATAVIEW_COL_RESIZABLE);
+        column1->SetMinWidth(150); // this column can't be resized to be smaller
+        m_ctrl[4]->AppendColumn(column1);
+    }
+    break;
     }
 }
 
@@ -1000,6 +1102,8 @@ void MyFrame::OnStyleChange( wxCommandEvent& WXUNUSED(event) )
         m_music_model.reset(NULL);
     else if (nPanel == 1)
         m_list_model.reset(NULL);
+    else if (nPanel == 4)
+        m_long_music_model.reset(NULL);
 
     // rebuild the DVC for the selected panel:
     BuildDataViewCtrl((wxPanel*)m_notebook->GetPage(nPanel), nPanel, style);
@@ -1018,7 +1122,7 @@ void MyFrame::OnAbout( wxCommandEvent& WXUNUSED(event) )
     wxAboutDialogInfo info;
     info.SetName(_("DataView sample"));
     info.SetDescription(_("This sample demonstrates wxDataViewCtrl"));
-    info.SetCopyright(wxT("(C) 2007-2009 Robert Roebling"));
+    info.SetCopyright("(C) 2007-2009 Robert Roebling");
     info.AddDeveloper("Robert Roebling");
     info.AddDeveloper("Francesco Montorsi");
 
@@ -1201,7 +1305,8 @@ void MyFrame::OnValueChanged( wxDataViewEvent &event )
 void MyFrame::OnActivated( wxDataViewEvent &event )
 {
     wxString title = m_music_model->GetTitle( event.GetItem() );
-    wxLogMessage( "wxEVT_DATAVIEW_ITEM_ACTIVATED, Item: %s", title );
+    wxLogMessage( "wxEVT_DATAVIEW_ITEM_ACTIVATED, Item: %s; Column: %d",
+                  title, event.GetColumn() );
 
     if (m_ctrl[0]->IsExpanded( event.GetItem() ))
     {
@@ -1500,3 +1605,11 @@ void MyFrame::OnMultipleSort( wxCommandEvent &event )
         wxLogMessage("Sorting by multiple columns not supported");
 }
 
+void MyFrame::OnSortByFirstColumn(wxCommandEvent& event)
+{
+    wxDataViewColumn* const col = m_ctrl[1]->GetColumn(0);
+    if ( event.IsChecked() )
+        col->SetSortOrder(true /* ascending */);
+    else
+        col->UnsetAsSortKey();
+}

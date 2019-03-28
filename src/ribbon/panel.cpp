@@ -135,7 +135,7 @@ void wxRibbonPanel::CommonInit(const wxString& label, const wxBitmap& icon, long
     }
 
     SetAutoLayout(true);
-    SetBackgroundStyle(wxBG_STYLE_CUSTOM);
+    SetBackgroundStyle(wxBG_STYLE_PAINT);
     SetMinSize(wxSize(20, 20));
 }
 
@@ -670,6 +670,10 @@ bool wxRibbonPanel::Realize()
     }
 
     wxSize minimum_children_size(0, 0);
+
+    // Reset it before calling GetPanelSizerMinSize() below as it shouldn't use
+    // the old value, if we had any.
+    m_smallest_unminimised_size = wxDefaultSize;
 
     // Ask sizer if there is one present
     if(GetSizer())

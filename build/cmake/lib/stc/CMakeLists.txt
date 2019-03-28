@@ -163,8 +163,20 @@ target_include_directories(wxscintilla PRIVATE
 target_compile_definitions(wxscintilla PUBLIC
     NO_CXX11_REGEX
     __WX__
+    SCI_LEXER
+    LINK_LEXERS
 )
-wx_target_enable_precomp(wxscintilla)
+
+if(wxBUILD_PRECOMP)
+    # The auto-generated header causes undefined members and identifiers in the
+    # standard c++ headers when using clang.
+    # Do not disable precompiled headers entirely but use the main Scintilla
+    # header as prefix header so there is at least a small speedup.
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        set(wxSCINTILLA_PREC_HEADER "${wxSOURCE_DIR}/src/stc/scintilla/include/Scintilla.h")
+    endif()
+    wx_target_enable_precomp(wxscintilla ${wxSCINTILLA_PREC_HEADER})
+endif()
 
 wx_add_library(stc ${STC_FILES})
 wx_lib_include_directories(stc PRIVATE
@@ -173,6 +185,8 @@ wx_lib_include_directories(stc PRIVATE
     ${wxSOURCE_DIR}/src/stc/scintilla/src
     )
 wx_lib_compile_definitions(stc PRIVATE
+    NO_CXX11_REGEX
+    __WX__
     SCI_LEXER
     LINK_LEXERS
 )

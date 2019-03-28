@@ -227,7 +227,7 @@ public:
                 for which this function returns the number of frames in the
                 animation).
     */
-    virtual int GetImageCount(wxInputStream& stream);
+    int GetImageCount(wxInputStream& stream);
 
     /**
         Gets the MIME type associated with this handler.
@@ -245,7 +245,7 @@ public:
     wxBitmapType GetType() const;
 
     /**
-        Loads a image from a stream, putting the resulting data into @a image.
+        Loads an image from a stream, putting the resulting data into @a image.
 
         If the image file contains more than one image and the image handler is
         capable of retrieving these individually, @a index indicates which image
@@ -269,7 +269,7 @@ public:
                           bool verbose = true, int index = -1);
 
     /**
-        Saves a image in the output stream.
+        Saves an image in the output stream.
 
         @param image
             The image object which is to be affected by this operation.
@@ -350,7 +350,7 @@ protected:
     /**
        Called to get the number of images available in a multi-image file
        type, if supported.
-       
+
        NOTE: this function is allowed to change the current stream position
              since GetImageCount() will take care of restoring it later
     */
@@ -358,7 +358,7 @@ protected:
 
     /**
        Called to test if this handler can read an image from the given stream.
-       
+
        NOTE: this function is allowed to change the current stream position
              since CallDoCanRead() will take care of restoring it later
     */
@@ -512,7 +512,7 @@ public:
 
         double hue;
         double saturation;
-        double value;        
+        double value;
     };
 
     /**
@@ -953,9 +953,8 @@ public:
         than @a threshold are replaced with the mask colour and the alpha
         channel is removed. Otherwise nothing is done.
 
-        The mask colour is chosen automatically using
-        FindFirstUnusedColour() by this function, see the overload below if you
-        this is not appropriate.
+        The mask colour is chosen automatically using FindFirstUnusedColour(),
+        see the overload below if this is not appropriate.
 
         @return Returns @true on success, @false on error.
     */
@@ -1744,7 +1743,7 @@ public:
     /**
        Set the color of the pixel at the given x and y coordinate.
     */
-    
+
     void SetRGB( int x, int y, unsigned char r, unsigned char g, unsigned char b );
 
     /**

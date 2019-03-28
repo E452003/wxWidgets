@@ -31,8 +31,8 @@ class WebTestCase : public CppUnit::TestCase
 public:
     WebTestCase() { }
 
-    void setUp();
-    void tearDown();
+    void setUp() wxOVERRIDE;
+    void tearDown() wxOVERRIDE;
 
 private:
     CPPUNIT_TEST_SUITE( WebTestCase );
@@ -72,7 +72,7 @@ private:
 };
 
 //Convenience macro
-#define ENSURE_LOADED WX_ASSERT_EVENT_OCCURS_IN((*m_loaded), 1, 1000)
+#define ENSURE_LOADED CHECK( m_loaded->WaitEvent() )
 
 // register in the unnamed registry so that these tests are run by default
 CPPUNIT_TEST_SUITE_REGISTRATION( WebTestCase );

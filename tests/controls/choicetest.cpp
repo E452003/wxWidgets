@@ -26,12 +26,12 @@ class ChoiceTestCase : public ItemContainerTestCase, public CppUnit::TestCase
 public:
     ChoiceTestCase() { }
 
-    virtual void setUp();
-    virtual void tearDown();
+    virtual void setUp() wxOVERRIDE;
+    virtual void tearDown() wxOVERRIDE;
 
 private:
-    virtual wxItemContainer *GetContainer() const { return m_choice; }
-    virtual wxWindow *GetContainerWindow() const { return m_choice; }
+    virtual wxItemContainer *GetContainer() const wxOVERRIDE { return m_choice; }
+    virtual wxWindow *GetContainerWindow() const wxOVERRIDE { return m_choice; }
 
     CPPUNIT_TEST_SUITE( ChoiceTestCase );
         wxITEM_CONTAINER_TESTS();
@@ -45,11 +45,8 @@ private:
     wxDECLARE_NO_COPY_CLASS(ChoiceTestCase);
 };
 
-// register in the unnamed registry so that these tests are run by default
-CPPUNIT_TEST_SUITE_REGISTRATION( ChoiceTestCase );
-
-// also include in its own registry so that these tests can be run alone
-CPPUNIT_TEST_SUITE_NAMED_REGISTRATION( ChoiceTestCase, "ChoiceTestCase" );
+wxREGISTER_UNIT_TEST_WITH_TAGS(ChoiceTestCase,
+                               "[ChoiceTestCase][item-container]");
 
 void ChoiceTestCase::setUp()
 {

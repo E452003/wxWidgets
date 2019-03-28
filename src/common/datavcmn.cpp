@@ -87,6 +87,8 @@ wxFont wxDataViewItemAttr::GetEffectiveFont(const wxFont& font) const
         f.MakeBold();
     if ( GetItalic() )
         f.MakeItalic();
+    if ( GetStrikethrough() )
+        f.MakeStrikethrough();
     return f;
 }
 
@@ -1065,7 +1067,7 @@ wxDataViewCustomRendererBase::RenderText(const wxString& text,
     int flags = 0;
     if ( state & wxDATAVIEW_CELL_SELECTED )
         flags |= wxCONTROL_SELECTED;
-    if ( !GetOwner()->GetOwner()->IsEnabled() )
+    if ( !(GetOwner()->GetOwner()->IsEnabled() && GetEnabled()) )
         flags |= wxCONTROL_DISABLED;
 
     // Notice that we intentionally don't use any alignment here: it is not
@@ -1683,6 +1685,7 @@ void wxDataViewEvent::Init(wxDataViewCtrlBase* dvc,
     m_dataSize = 0;
     m_dragFlags = 0;
     m_dropEffect = wxDragNone;
+    m_proposedDropIndex = -1;
 #endif // wxUSE_DRAG_AND_DROP
 
     SetEventObject(dvc);
@@ -3026,7 +3029,7 @@ void  wxDataViewTreeCtrl::DeleteAllItems()
 
 void wxDataViewTreeCtrl::OnExpanded( wxDataViewEvent &event )
 {
-    if (HasImageList()) return;
+    if (!HasImageList()) return;
 
     wxDataViewTreeStoreContainerNode* container = GetStore()->FindContainerNode( event.GetItem() );
     if (!container) return;
@@ -3038,7 +3041,7 @@ void wxDataViewTreeCtrl::OnExpanded( wxDataViewEvent &event )
 
 void wxDataViewTreeCtrl::OnCollapsed( wxDataViewEvent &event )
 {
-    if (HasImageList()) return;
+    if (!HasImageList()) return;
 
     wxDataViewTreeStoreContainerNode* container = GetStore()->FindContainerNode( event.GetItem() );
     if (!container) return;

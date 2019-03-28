@@ -127,7 +127,7 @@ public:
     {
     }
 
-    virtual void setUp() { wxASSERT( m_dc ); }
+    virtual void setUp() wxOVERRIDE { wxASSERT( m_dc ); }
     virtual wxDC* GetDC(wxMemoryDC* dc) = 0;
 
 protected:
@@ -414,7 +414,7 @@ public:
 
     virtual ~ClippingBoxTestCaseGCDCDirect2D() {}
 
-    virtual void FlushDC()
+    virtual void FlushDC() wxOVERRIDE
     {
         // Apparently, flushing native Direct2D renderer
         // is not enough to update underlying DC (bitmap)
@@ -1616,7 +1616,7 @@ public:
 
     virtual ~ClippingBoxTestCaseGCDirect2D() {}
 
-    virtual void FlushGC()
+    virtual void FlushGC() wxOVERRIDE
     {
         // Apparently, flushing native Direct2D renderer
         // is not enough to update underlying DC (bitmap)

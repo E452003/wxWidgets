@@ -20,23 +20,26 @@
 #endif // WX_PRECOMP
 
 #include "wx/notebook.h"
+#include "wx/scopedptr.h"
+
 #include "bookctrlbasetest.h"
+#include "testableframe.h"
 
 class NotebookTestCase : public BookCtrlBaseTestCase, public CppUnit::TestCase
 {
 public:
     NotebookTestCase() { m_notebook = NULL; m_numPageChanges = 0; }
 
-    virtual void setUp();
-    virtual void tearDown();
+    virtual void setUp() wxOVERRIDE;
+    virtual void tearDown() wxOVERRIDE;
 
 private:
-    virtual wxBookCtrlBase *GetBase() const { return m_notebook; }
+    virtual wxBookCtrlBase *GetBase() const wxOVERRIDE { return m_notebook; }
 
-    virtual wxEventType GetChangedEvent() const
+    virtual wxEventType GetChangedEvent() const wxOVERRIDE
     { return wxEVT_NOTEBOOK_PAGE_CHANGED; }
 
-    virtual wxEventType GetChangingEvent() const
+    virtual wxEventType GetChangingEvent() const wxOVERRIDE
     { return wxEVT_NOTEBOOK_PAGE_CHANGING; }
 
 
@@ -106,7 +109,7 @@ void NotebookTestCase::NoEventsOnDestruction()
 
     // Normally deleting a page before the selected one results in page
     // selection changing and the corresponding event.
-    m_notebook->DeletePage(0);
+    m_notebook->DeletePage(static_cast<size_t>(0));
     CHECK( m_numPageChanges == 1 );
 
     // But deleting the entire control shouldn't generate any events, yet it
@@ -116,6 +119,51 @@ void NotebookTestCase::NoEventsOnDestruction()
     m_notebook->Destroy();
     m_notebook = NULL;
     CHECK( m_numPageChanges == 1 );
+}
+
+TEST_CASE("wxNotebook::AddPageEvents", "[wxNotebook][AddPage][event]")
+{
+    wxNotebook* const
+        notebook = new wxNotebook(wxTheApp->GetTopWindow(), wxID_ANY,
+                                  wxDefaultPosition, wxSize(400, 200));
+    wxScopedPtr<wxNotebook> cleanup(notebook);
+
+    CHECK( notebook->GetSelection() == wxNOT_FOUND );
+
+    EventCounter countPageChanging(notebook, wxEVT_NOTEBOOK_PAGE_CHANGING);
+    EventCounter countPageChanged(notebook, wxEVT_NOTEBOOK_PAGE_CHANGED);
+
+    // Add the first page, it is special.
+    notebook->AddPage(new wxPanel(notebook), "Initial page");
+
+    // The selection should have been changed.
+    CHECK( notebook->GetSelection() == 0 );
+
+    // But no events should have been generated.
+    CHECK( countPageChanging.GetCount() == 0 );
+    CHECK( countPageChanged.GetCount() == 0 );
+
+
+    // Add another page without selecting it.
+    notebook->AddPage(new wxPanel(notebook), "Unselected page");
+
+    // Selection shouldn't have changed.
+    CHECK( notebook->GetSelection() == 0 );
+
+    // And no events should have been generated, of course.
+    CHECK( countPageChanging.GetCount() == 0 );
+    CHECK( countPageChanged.GetCount() == 0 );
+
+
+    // Finally add another page and do select it.
+    notebook->AddPage(new wxPanel(notebook), "Selected page", true);
+
+    // It should have become selected.
+    CHECK( notebook->GetSelection() == 2 );
+
+    // And events for the selection change should have been generated.
+    CHECK( countPageChanging.GetCount() == 1 );
+    CHECK( countPageChanged.GetCount() == 1 );
 }
 
 #endif //wxUSE_NOTEBOOK

@@ -281,7 +281,7 @@ inline wxUint64 wxZipHeader::Read64()
 
 /////////////////////////////////////////////////////////////////////////////
 // Stored input stream
-// Trival decompressor for files which are 'stored' in the zip file.
+// Trivial decompressor for files which are 'stored' in the zip file.
 
 class wxStoredInputStream : public wxFilterInputStream
 {
@@ -328,7 +328,7 @@ size_t wxStoredInputStream::OnSysRead(void *buffer, size_t size)
 
 /////////////////////////////////////////////////////////////////////////////
 // Stored output stream
-// Trival compressor for files which are 'stored' in the zip file.
+// Trivial compressor for files which are 'stored' in the zip file.
 
 class wxStoredOutputStream : public wxFilterOutputStream
 {
@@ -1073,7 +1073,6 @@ bool wxZipEntry::LoadExtraInfo(const char* extraData, wxUint16 extraLen, bool lo
         // promoted to int, which has range large enough to deal with any value
         // of the field length.
         extraData += fieldLen + 4;
-        extraLen -= fieldLen + 4;
     }
 
     // extraInfo had unknown format

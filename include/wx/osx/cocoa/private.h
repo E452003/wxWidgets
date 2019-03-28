@@ -32,12 +32,15 @@ OSStatus WXDLLIMPEXP_CORE wxMacDrawCGImage(
                                CGContextRef    inContext,
                                const CGRect *  inBounds,
                                CGImageRef      inImage) ;
+void WXDLLIMPEXP_CORE wxOSXDrawNSImage(
+                                           CGContextRef    inContext,
+                                           const CGRect *  inBounds,
+                                           WX_NSImage      inImage) ;
+WX_NSImage WXDLLIMPEXP_CORE wxOSXGetSystemImage(const wxString& name);
 WX_NSImage WXDLLIMPEXP_CORE wxOSXGetNSImageFromCGImage( CGImageRef image, double scale = 1.0, bool isTemplate = false);
 WX_NSImage WXDLLIMPEXP_CORE wxOSXGetNSImageFromIconRef( WXHICON iconref );
-CGImageRef WXDLLIMPEXP_CORE wxOSXCreateCGImageFromNSImage( WX_NSImage nsimage, double *scale = NULL );
-CGImageRef WXDLLIMPEXP_CORE wxOSXGetCGImageFromNSImage( WX_NSImage nsimage, CGRect* r, CGContextRef cg);
-CGContextRef WXDLLIMPEXP_CORE wxOSXCreateBitmapContextFromNSImage( WX_NSImage nsimage, bool *isTemplate = NULL);
-
+WX_NSImage WXDLLIMPEXP_CORE wxOSXGetIconForType(OSType type );
+void WXDLLIMPEXP_CORE wxOSXSetImageSize(WX_NSImage image, CGFloat width, CGFloat height);
 wxBitmap WXDLLIMPEXP_CORE wxOSXCreateSystemBitmap(const wxString& id, const wxString &client, const wxSize& size);
 WXWindow WXDLLIMPEXP_CORE wxOSXGetMainWindow();
 WXWindow WXDLLIMPEXP_CORE wxOSXGetKeyWindow();
@@ -47,7 +50,7 @@ class WXDLLIMPEXP_FWD_CORE wxDialog;
 class WXDLLIMPEXP_CORE wxWidgetCocoaImpl : public wxWidgetImpl
 {
 public :
-    wxWidgetCocoaImpl( wxWindowMac* peer , WXWidget w, bool isRootControl = false, bool isUserPane = false ) ;
+    wxWidgetCocoaImpl( wxWindowMac* peer , WXWidget w, int flags = 0 ) ;
     wxWidgetCocoaImpl() ;
     ~wxWidgetCocoaImpl();
 
@@ -160,7 +163,7 @@ public :
 #endif
 
     virtual double      GetContentScaleFactor() const;
-    
+
     // cocoa thunk connected calls
 
 #if wxUSE_DRAG_AND_DROP
@@ -278,20 +281,20 @@ public :
     virtual void SetRepresentedFilename(const wxString& filename) wxOVERRIDE;
 
     wxNonOwnedWindow*   GetWXPeer() { return m_wxPeer; }
-    
+
     CGWindowLevel   GetWindowLevel() const wxOVERRIDE { return m_macWindowLevel; }
     void            RestoreWindowLevel() wxOVERRIDE;
-    
+
     static WX_NSResponder GetNextFirstResponder() ;
     static WX_NSResponder GetFormerFirstResponder() ;
 protected :
     CGWindowLevel   m_macWindowLevel;
     WXWindow        m_macWindow;
     void *          m_macFullScreenData ;
-    
+
 private:
     void SetUpForModalParent();
-    
+
     wxDECLARE_DYNAMIC_CLASS_NO_COPY(wxNonOwnedWindowCocoaImpl);
 };
 
@@ -305,7 +308,7 @@ public:
 #if wxUSE_MARKUP
     virtual void SetLabelMarkup(const wxString& markup);
 #endif // wxUSE_MARKUP
-    
+
     void SetPressedBitmap( const wxBitmap& bitmap );
     void GetLayoutInset(int &left , int &top , int &right, int &bottom) const;
     void SetAcceleratorFromLabel(const wxString& label);

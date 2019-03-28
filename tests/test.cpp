@@ -21,6 +21,7 @@
 // Suppress some warnings in catch_impl.hpp.
 wxCLANG_WARNING_SUPPRESS(missing-braces)
 wxCLANG_WARNING_SUPPRESS(logical-op-parentheses)
+wxCLANG_WARNING_SUPPRESS(inconsistent-missing-override)
 
 // This file needs to get the CATCH definitions in addition to the usual
 // assertion macros declarations from catch.hpp included by testprec.h.
@@ -30,6 +31,7 @@ wxCLANG_WARNING_SUPPRESS(logical-op-parentheses)
 
 wxCLANG_WARNING_RESTORE(missing-braces)
 wxCLANG_WARNING_RESTORE(logical-op-parentheses)
+wxCLANG_WARNING_RESTORE(inconsistent-missing-override)
 
 // This probably could be done by predefining CLARA_CONFIG_MAIN, but at the
 // point where we are, just define this global variable manually.
@@ -186,11 +188,11 @@ public:
     TestApp();
 
     // standard overrides
-    virtual bool OnInit();
-    virtual int  OnExit();
+    virtual bool OnInit() wxOVERRIDE;
+    virtual int  OnExit() wxOVERRIDE;
 
 #ifdef __WIN32__
-    virtual wxAppTraits *CreateTraits()
+    virtual wxAppTraits *CreateTraits() wxOVERRIDE
     {
         // Define a new class just to customize CanUseStderr() behaviour.
         class TestAppTraits : public TestAppTraitsBase
@@ -200,11 +202,11 @@ public:
             // in this case we really don't want to show any message boxes, as
             // wxMessageOutputBest, used e.g. from the default implementation
             // of wxApp::OnUnhandledException(), would do by default.
-            virtual bool CanUseStderr() { return true; }
+            virtual bool CanUseStderr() wxOVERRIDE { return true; }
 
             // Overriding CanUseStderr() is not enough, we also need to
             // override this one to avoid returning false from it.
-            virtual bool WriteToStderr(const wxString& text)
+            virtual bool WriteToStderr(const wxString& text) wxOVERRIDE
             {
                 wxFputs(text, stderr);
                 fflush(stderr);
@@ -221,7 +223,7 @@ public:
 
     // Also override this method to avoid showing any dialogs from here -- and
     // show some details about the exception along the way.
-    virtual bool OnExceptionInMainLoop()
+    virtual bool OnExceptionInMainLoop() wxOVERRIDE
     {
         wxFprintf(stderr, "Unhandled exception in the main loop: %s\n",
                   Catch::translateActiveException());
@@ -230,8 +232,8 @@ public:
     }
 
     // used by events propagation test
-    virtual int FilterEvent(wxEvent& event);
-    virtual bool ProcessEvent(wxEvent& event);
+    virtual int FilterEvent(wxEvent& event) wxOVERRIDE;
+    virtual bool ProcessEvent(wxEvent& event) wxOVERRIDE;
 
     void SetFilterEventFunc(FilterEventFunc f) { m_filterEventFunc = f; }
     void SetProcessEventFunc(ProcessEventFunc f) { m_processEventFunc = f; }
@@ -269,7 +271,7 @@ public:
         event.Skip();
     }
 
-    virtual int OnRun()
+    virtual int OnRun() wxOVERRIDE
     {
         if ( TestAppBase::OnRun() != 0 )
             m_exitcode = EXIT_FAILURE;
@@ -277,7 +279,7 @@ public:
         return m_exitcode;
     }
 #else // !wxUSE_GUI
-    virtual int OnRun()
+    virtual int OnRun() wxOVERRIDE
     {
         return RunTests();
     }
@@ -359,9 +361,9 @@ extern bool IsNetworkAvailable()
 
     // NOTE: we could use wxDialUpManager here if it was in wxNet; since it's in
     //       wxCore we use a simple rough test:
-    
+
     wxSocketBase::Initialize();
-    
+
     wxIPV4address addr;
     if (!addr.Hostname("www.google.com") || !addr.Service("www"))
     {
@@ -372,9 +374,9 @@ extern bool IsNetworkAvailable()
     wxSocketClient sock;
     sock.SetTimeout(10);    // 10 secs
     bool online = sock.Connect(addr);
-    
+
     wxSocketBase::Shutdown();
-    
+
     return online;
 }
 
