@@ -502,16 +502,12 @@ bool wxHtmlHelpData::AddBookParam(const wxFSFile& bookfile,
                                   const wxString& indexfile, const wxString& deftopic,
                                   const wxString& path)
 {
-#if wxUSE_WCHAR_T
-        #if wxUSE_UNICODE
-            #define CORRECT_STR(str, conv) \
-                str = wxString((str).mb_str(wxConvISO8859_1), conv)
-        #else
-            #define CORRECT_STR(str, conv) \
-                str = wxString((str).wc_str(conv), wxConvLocal)
-        #endif
+#if wxUSE_UNICODE
+    #define CORRECT_STR(str, conv) \
+        str = wxString((str).mb_str(wxConvISO8859_1), conv)
 #else
-    #define CORRECT_STR(str, conv)
+    #define CORRECT_STR(str, conv) \
+        str = wxString((str).wc_str(conv), wxConvLocal)
 #endif
 
     wxFileSystem fsys;
@@ -732,10 +728,10 @@ wxString wxHtmlHelpData::FindPageByName(const wxString& x)
     if (!has_non_ascii)
     {
       wxFileSystem fsys;
-      wxFSFile *f;
       // 1. try to open given file:
       for (i = 0; i < cnt; i++)
       {
+        wxFSFile *f;
         f = fsys.OpenFile(m_bookRecords[i].GetFullPath(x));
         if (f)
         {

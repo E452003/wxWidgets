@@ -29,11 +29,7 @@
 #endif
 
 #if wxUSE_STD_IOSTREAM
-    #if wxUSE_IOSTREAMH
-        #include <fstream.h>
-    #else
-        #include <fstream>
-    #endif
+    #include <fstream>
 #endif
 
 #if wxUSE_STREAMS
@@ -678,7 +674,7 @@ bool wxVariant::GetBool() const
     else
     {
         wxFAIL_MSG(wxT("Could not convert to a bool"));
-        return 0;
+        return false;
     }
 }
 
@@ -1986,6 +1982,7 @@ wxVariantData* wxVariantDataList::VariantDataFactory(const wxAny& any)
 {
     wxAnyList src = any.As<wxAnyList>();
     wxVariantList dst;
+    dst.DeleteContents(true);
     wxAnyList::compatibility_iterator node = src.GetFirst();
     while (node)
     {

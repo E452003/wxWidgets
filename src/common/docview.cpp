@@ -63,13 +63,9 @@
 #include "wx/except.h"
 
 #if wxUSE_STD_IOSTREAM
-    #include "wx/ioswrap.h"
     #include "wx/beforestd.h"
-    #if wxUSE_IOSTREAMH
-        #include <fstream.h>
-    #else
-        #include <fstream>
-    #endif
+    #include <fstream>
+    #include <iostream>
     #include "wx/afterstd.h"
 #else
     #include "wx/wfstream.h"
@@ -2235,11 +2231,10 @@ bool wxTransferFileToStream(const wxString& filename, wxSTD ostream& stream)
     if ( !file.IsOpened() )
         return false;
 
-    char buf[4096];
-
-    size_t nRead;
     do
     {
+        char buf[4096];
+        size_t nRead;
         nRead = file.Read(buf, WXSIZEOF(buf));
         if ( file.Error() )
             return false;

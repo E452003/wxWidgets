@@ -291,8 +291,7 @@ wxBEGIN_EVENT_TABLE (AppFrame, wxFrame)
 wxEND_EVENT_TABLE ()
 
 AppFrame::AppFrame (const wxString &title)
-        : wxFrame ((wxFrame *)NULL, wxID_ANY, title, wxDefaultPosition, wxSize(750,550),
-                    wxDEFAULT_FRAME_STYLE | wxNO_FULL_REPAINT_ON_RESIZE)
+        : wxFrame ((wxFrame *)NULL, wxID_ANY, title, wxDefaultPosition, wxSize(750,550))
 {
     SetIcon(wxICON(sample));
 
@@ -780,7 +779,7 @@ public:
         StyleSetForeground(wxSTC_H_DOUBLESTRING, *wxBLACK);
         StyleSetForeground(wxSTC_H_SINGLESTRING, *wxBLACK);
         StyleSetForeground(wxSTC_H_OTHER, *wxBLUE);
-        StyleSetForeground(wxSTC_H_COMMENT, wxTheColourDatabase->Find("GREY"));
+        StyleSetForeground(wxSTC_H_COMMENT, wxColour("GREY"));
         StyleSetForeground(wxSTC_H_ENTITY, *wxRED);
         StyleSetBold(wxSTC_H_ENTITY, true);
         StyleSetForeground(wxSTC_H_TAGEND, *wxBLUE);

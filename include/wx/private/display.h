@@ -3,7 +3,7 @@
 // Purpose:     wxDisplayImpl class declaration
 // Author:      Vadim Zeitlin
 // Created:     2006-03-15
-// Copyright:   (c) 2002-2006 Vadim Zeitlin <vadim@wxwindows.org>
+// Copyright:   (c) 2002-2006 Vadim Zeitlin <vadim@wxwidgets.org>
 // Licence:     wxWindows licence
 /////////////////////////////////////////////////////////////////////////////
 
@@ -37,6 +37,9 @@ public:
         return m_impls[n];
     }
 
+    // Return the primary display object, creating it if necessary.
+    wxDisplayImpl* GetPrimaryDisplay();
+
     // get the total number of displays
     virtual unsigned GetCount() = 0;
 
@@ -49,7 +52,7 @@ public:
     virtual int GetFromWindow(const wxWindow *window);
 
     // Trigger recreation of wxDisplayImpl when they're needed the next time.
-    void InvalidateCache() { ClearImpls(); }
+    virtual void InvalidateCache() { ClearImpls(); }
 
 protected:
     // create a new display object
