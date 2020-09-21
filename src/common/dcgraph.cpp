@@ -487,6 +487,8 @@ void wxGCDCImpl::ComputeScaleAndOrigin()
         m_matrixCurrent.Concat(mtxExt);
 #endif // wxUSE_DC_TRANSFORM_MATRIX
         m_graphicContext->ConcatTransform( m_matrixCurrent );
+        m_matrixCurrentInv = m_matrixCurrent;
+        m_matrixCurrentInv.Invert();
         m_isClipBoxValid = false;
     }
 }
@@ -593,6 +595,23 @@ void wxGCDCImpl::ResetTransformMatrix()
 }
 
 #endif // wxUSE_DC_TRANSFORM_MATRIX
+
+// coordinates conversions and transforms
+wxPoint wxGCDCImpl::DeviceToLogical(wxCoord x, wxCoord y) const
+{
+    wxDouble px = x;
+    wxDouble py = y;
+    m_matrixCurrentInv.TransformPoint(&px, &py);
+    return wxPoint(wxRound(px), wxRound(py));
+}
+
+wxPoint wxGCDCImpl::LogicalToDevice(wxCoord x, wxCoord y) const
+{
+    wxDouble px = x;
+    wxDouble py = y;
+    m_matrixCurrent.TransformPoint(&px, &py);
+    return wxPoint(wxRound(px), wxRound(py));
+}
 
 bool wxGCDCImpl::DoFloodFill(wxCoord WXUNUSED(x), wxCoord WXUNUSED(y),
                              const wxColour& WXUNUSED(col),
@@ -1045,7 +1064,9 @@ bool wxGCDCImpl::DoStretchBlit(
     wxCompositionMode mode = TranslateRasterOp(logical_func);
     if ( mode == wxCOMPOSITION_INVALID )
     {
-        wxFAIL_MSG( wxT("Blitting is not supported with this logical operation.") );
+        // Do *not* assert here, this function is often call from wxEVT_PAINT
+        // handler and asserting will just result in a reentrant call to the
+        // same handler and a crash.
         return false;
     }
 
@@ -1196,13 +1217,19 @@ void wxGCDCImpl::DoDrawText(const wxString& str, wxCoord x, wxCoord y)
     if ( str.empty() )
         return;
 
-    if ( !m_logicalFunctionSupported )
-        return;
+    // Text drawing shouldn't be affected by the raster operation
+    // mode set by SetLogicalFunction() and should be always done
+    // in the default wxCOPY mode (which is wxCOMPOSITION_OVER
+    // composition mode).
+    wxCompositionMode curMode = m_graphicContext->GetCompositionMode();
+    m_graphicContext->SetCompositionMode(wxCOMPOSITION_OVER);
 
     if ( m_backgroundMode == wxBRUSHSTYLE_TRANSPARENT )
         m_graphicContext->DrawText( str, x ,y);
     else
         m_graphicContext->DrawText( str, x ,y , m_graphicContext->CreateBrush(m_textBackgroundColour) );
+
+    m_graphicContext->SetCompositionMode(curMode);
 
     wxCoord w, h;
     GetOwner()->GetTextExtent(str, &w, &h);
@@ -1228,18 +1255,30 @@ void wxGCDCImpl::DoGetTextExtent( const wxString &str, wxCoord *width, wxCoord *
         m_graphicContext->SetFont( *theFont, m_textForegroundColour );
     }
 
-    wxDouble h , d , e , w;
+    wxDouble w wxDUMMY_INITIALIZE(0),
+             h wxDUMMY_INITIALIZE(0),
+             d wxDUMMY_INITIALIZE(0),
+             e wxDUMMY_INITIALIZE(0);
 
-    m_graphicContext->GetTextExtent( str, &w, &h, &d, &e );
+    // Don't pass non-NULL pointers for the parts we don't need, this could
+    // result in doing extra unnecessary work inside GetTextExtent().
+    m_graphicContext->GetTextExtent
+                      (
+                        str,
+                        width ? &w : NULL,
+                        height ? &h : NULL,
+                        descent ? &d : NULL,
+                        externalLeading ? &e : NULL
+                      );
 
     if ( height )
-        *height = (wxCoord)(h+0.5);
+        *height = (wxCoord)wxRound(h);
     if ( descent )
-        *descent = (wxCoord)(d+0.5);
+        *descent = (wxCoord)wxRound(d);
     if ( externalLeading )
-        *externalLeading = (wxCoord)(e+0.5);
+        *externalLeading = (wxCoord)wxRound(e);
     if ( width )
-        *width = (wxCoord)(w+0.5);
+        *width = (wxCoord)wxRound(w);
 
     if ( theFont )
     {
@@ -1259,7 +1298,7 @@ bool wxGCDCImpl::DoGetPartialTextExtents(const wxString& text, wxArrayInt& width
 
     m_graphicContext->GetPartialTextExtents( text, widthsD );
     for ( size_t i = 0; i < widths.GetCount(); ++i )
-        widths[i] = (wxCoord)(widthsD[i] + 0.5);
+        widths[i] = wxRound(widthsD[i]);
 
     return true;
 }
@@ -1309,9 +1348,9 @@ void wxGCDCImpl::DoGetSize(int *width, int *height) const
     wxDouble w,h;
     m_graphicContext->GetSize( &w, &h );
     if ( height )
-        *height = (int) (h+0.5);
+        *height = wxRound(h);
     if ( width )
-        *width = (int) (w+0.5);
+        *width = wxRound(w);
 }
 
 void wxGCDCImpl::DoGradientFillLinear(const wxRect& rect,

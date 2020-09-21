@@ -24,6 +24,9 @@
 #if wxUSE_WEBVIEW_IE
     #include "wx/msw/webview_ie.h"
 #endif
+#if wxUSE_WEBVIEW_WEBKIT2
+    #include "wx/stopwatch.h"
+#endif
 
 //Convenience macro
 #define ENSURE_LOADED CHECK( m_loaded->WaitEvent() )
@@ -123,6 +126,7 @@ TEST_CASE_METHOD(WebViewTestCase, "WebView", "[wxWebView]")
         CHECK(m_browser->CanGoForward());
     }
 
+#if !wxUSE_WEBVIEW_WEBKIT2
     SECTION("HistoryEnable")
     {
         LoadUrl();
@@ -136,7 +140,9 @@ TEST_CASE_METHOD(WebViewTestCase, "WebView", "[wxWebView]")
         CHECK(!m_browser->CanGoForward());
         CHECK(!m_browser->CanGoBack());
     }
+#endif
 
+#if !wxUSE_WEBVIEW_WEBKIT2
     SECTION("HistoryClear")
     {
         LoadUrl(2);
@@ -153,6 +159,7 @@ TEST_CASE_METHOD(WebViewTestCase, "WebView", "[wxWebView]")
         CHECK(!m_browser->CanGoForward());
         CHECK(!m_browser->CanGoBack());
     }
+#endif
 
     SECTION("HistoryList")
     {
@@ -190,6 +197,15 @@ TEST_CASE_METHOD(WebViewTestCase, "WebView", "[wxWebView]")
         CHECK(!m_browser->HasSelection());
 
         m_browser->SelectAll();
+
+#if wxUSE_WEBVIEW_WEBKIT2
+        // With WebKit SelectAll() sends a request to perform the selection to
+        // another process via proxy and there doesn't seem to be any way to
+        // wait until this request is actually handled, so loop here for some a
+        // bit before giving up.
+        for ( wxStopWatch sw; !m_browser->HasSelection() && sw.Time() < 50; )
+            wxMilliSleep(1);
+#endif // wxUSE_WEBVIEW_WEBKIT2
 
         CHECK(m_browser->HasSelection());
         CHECK(m_browser->GetSelectedText() == "Some strong text");
@@ -291,8 +307,8 @@ TEST_CASE_METHOD(WebViewTestCase, "WebView", "[wxWebView]")
         CHECK(m_browser->RunScript("function f(a){return a;}f('Hello World!');", &result));
         CHECK(result == _("Hello World!"));
 
-        CHECK(m_browser->RunScript("function f(a){return a;}f('a\\\'aa\\n\\rb\vb\\tb\\\\ccc\\\"ddd\\b\\fx');", &result));
-        CHECK(result == _("a\'aa\n\rb\vb\tb\\ccc\"ddd\b\fx"));
+        CHECK(m_browser->RunScript("function f(a){return a;}f('a\\\'aa\\n\\rb\\tb\\\\ccc\\\"ddd\\b\\fx');", &result));
+        CHECK(result == _("a\'aa\n\rb\tb\\ccc\"ddd\b\fx"));
 
         CHECK(m_browser->RunScript("function f(a){return a;}f(123);", &result));
         CHECK(wxAtoi(result) == 123);
@@ -337,6 +353,13 @@ TEST_CASE_METHOD(WebViewTestCase, "WebView", "[wxWebView]")
             var tzoffset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - tzoffset);}f();",
             &result));
         CHECK(result == "\"2016-10-08T21:30:40.000Z\"");
+
+        // Check for C++-style comments which used to be broken.
+        CHECK(m_browser->RunScript("function f() {\n"
+                                   "    // A C++ style comment\n"
+                                   "    return 17;\n"
+                                   "}f();", &result));
+        CHECK(result == "17");
 
         // Check for errors too.
         CHECK(!m_browser->RunScript("syntax(error"));

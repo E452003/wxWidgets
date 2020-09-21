@@ -96,6 +96,7 @@ private:
     wxDECLARE_EVENT_TABLE();
 };
 
+#if wxUSE_DISPLAY
 // Client data class for the choice control containing the video modes
 class MyVideoModeClientData : public wxClientData
 {
@@ -104,6 +105,7 @@ public:
 
     const wxVideoMode mode;
 };
+#endif // wxUSE_DISPLAY
 
 // ----------------------------------------------------------------------------
 // constants
@@ -290,6 +292,11 @@ void MyFrame::PopuplateWithDisplayInfo()
         sizer->Add(new wxStaticText(page, wxID_ANY,
                                     wxString::Format("%d", display.GetDepth())));
 
+        sizer->Add(new wxStaticText(page, wxID_ANY, "Scaling: "));
+        sizer->Add(new wxStaticText(page, wxID_ANY,
+                                    wxString::Format("%.2f",
+                                                     display.GetScaleFactor())));
+
         sizer->Add(new wxStaticText(page, wxID_ANY, "Name: "));
         sizer->Add(new wxStaticText(page, wxID_ANY, display.GetName()));
 
@@ -299,7 +306,7 @@ void MyFrame::PopuplateWithDisplayInfo()
 
         // add it to another sizer to have borders around it and button below
         wxSizer *sizerTop = new wxBoxSizer(wxVERTICAL);
-        sizerTop->Add(sizer, 1, wxALL | wxEXPAND, 10);
+        sizerTop->Add(sizer, wxSizerFlags(1).Expand().DoubleBorder());
 
 #if wxUSE_DISPLAY
         wxChoice *choiceModes = new wxChoice(page, Display_ChangeMode);
@@ -312,16 +319,18 @@ void MyFrame::PopuplateWithDisplayInfo()
             choiceModes->Append(VideoModeToText(mode),
                                 new MyVideoModeClientData(mode));
         }
+        const wxString currentMode = VideoModeToText(display.GetCurrentMode());
+        choiceModes->SetStringSelection(currentMode);
 
-        sizer->Add(new wxStaticText(page, wxID_ANY, "&Modes: "));
-        sizer->Add(choiceModes, 0, wxEXPAND);
+        sizer->Add(new wxStaticText(page, wxID_ANY, "&Modes: "),
+                   wxSizerFlags().CentreVertical());
+        sizer->Add(choiceModes, wxSizerFlags().Expand());
 
         sizer->Add(new wxStaticText(page, wxID_ANY, "Current: "));
-        sizer->Add(new wxStaticText(page, Display_CurrentMode,
-                                    VideoModeToText(display.GetCurrentMode())));
+        sizer->Add(new wxStaticText(page, Display_CurrentMode, currentMode));
 
         sizerTop->Add(new wxButton(page, Display_ResetMode, "&Reset mode"),
-                      0, wxALL | wxCENTRE, 5);
+                      wxSizerFlags().Centre().Border());
 #endif // wxUSE_DISPLAY
 
         page->SetSizer(sizerTop);
@@ -331,6 +340,7 @@ void MyFrame::PopuplateWithDisplayInfo()
     }
 
     SetClientSize(m_book->GetBestSize());
+    SetMinSize(GetSize());
 }
 
 #if wxUSE_DISPLAY

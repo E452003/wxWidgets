@@ -26,6 +26,7 @@
 #include "wx/stockitem.h"
 
 #include "wx/gtk/private.h"
+#include "wx/gtk/private/image.h"
 #include "wx/gtk/private/mnemonics.h"
 
 // Number of currently open modal dialogs, defined in src/gtk/toplevel.cpp.
@@ -911,9 +912,8 @@ void wxMenu::GtkAppend(wxMenuItem* mitem, int pos)
             const wxBitmap& bitmap = mitem->GetBitmap();
             if (bitmap.IsOk())
             {
-                // always use pixbuf, because pixmap mask does not
-                // work with disabled images in some themes
-                GtkWidget* image = gtk_image_new_from_pixbuf(bitmap.GetPixbuf());
+                GtkWidget* image = wxGtkImage::New();
+                WX_GTK_IMAGE(image)->Set(bitmap);
                 menuItem = gtk_image_menu_item_new_with_label("");
                 gtk_widget_show(image);
                 gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(menuItem), image);
@@ -1349,6 +1349,7 @@ wxGetGtkAccel(const wxMenuItem* item, guint* accel_key, GdkModifierType* accel_m
 
 #ifndef __WXGTK4__
 wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+wxGCC_WARNING_SUPPRESS(cast-qual)
 const char *wxGetStockGtkID(wxWindowID id)
 {
     #define STOCKITEM(wx,gtk)      \
@@ -1445,12 +1446,13 @@ const char *wxGetStockGtkID(wxWindowID id)
 
         default:
             break;
-    };
+    }
 
     #undef STOCKITEM
 
     return NULL;
 }
+wxGCC_WARNING_RESTORE(cast-qual)
 wxGCC_WARNING_RESTORE()
 #endif // !__WXGTK4__
 

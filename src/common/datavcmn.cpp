@@ -334,8 +334,13 @@ int wxDataViewModel::Compare( const wxDataViewItem &item1, const wxDataViewItem 
                               unsigned int column, bool ascending ) const
 {
     wxVariant value1,value2;
-    GetValue( value1, item1, column );
-    GetValue( value2, item2, column );
+
+    // Avoid calling GetValue() for the cells that are not supposed to have any
+    // value, this might be unexpected.
+    if ( HasValue(item1, column) )
+        GetValue( value1, item1, column );
+    if ( HasValue(item2, column) )
+        GetValue( value2, item2, column );
 
     if (!ascending)
     {
@@ -2004,7 +2009,7 @@ wxSize wxDataViewDateRenderer::GetSize() const
 // wxDataViewCheckIconTextRenderer implementation
 // ----------------------------------------------------------------------------
 
-#ifndef __WXOSX__
+#if defined(wxHAS_GENERIC_DATAVIEWCTRL) || !defined(__WXOSX__)
 
 IMPLEMENT_VARIANT_OBJECT_EXPORTED(wxDataViewCheckIconText, WXDLLIMPEXP_ADV)
 
@@ -2075,7 +2080,11 @@ wxSize wxDataViewCheckIconTextRenderer::GetSize() const
 
     if ( m_value.GetIcon().IsOk() )
     {
+#ifdef __WXGTK3__
+        const wxSize sizeIcon = m_value.GetIcon().GetScaledSize();
+#else
         const wxSize sizeIcon = m_value.GetIcon().GetSize();
+#endif
         if ( sizeIcon.y > size.y )
             size.y = sizeIcon.y;
 
@@ -2132,7 +2141,11 @@ bool wxDataViewCheckIconTextRenderer::Render(wxRect cell, wxDC* dc, int state)
     const wxIcon& icon = m_value.GetIcon();
     if ( icon.IsOk() )
     {
+#ifdef __WXGTK3__
+        const wxSize sizeIcon = icon.GetScaledSize();
+#else
         const wxSize sizeIcon = icon.GetSize();
+#endif
         wxRect rectIcon(cell.GetPosition(), sizeIcon);
         rectIcon.x += xoffset;
         rectIcon = rectIcon.CentreIn(cell, wxVERTICAL);
@@ -2196,7 +2209,7 @@ wxSize wxDataViewCheckIconTextRenderer::GetCheckSize() const
     return wxRendererNative::Get().GetCheckBoxSize(GetView());
 }
 
-#endif // !__WXOSX__
+#endif // ! native __WXOSX__
 
 //-----------------------------------------------------------------------------
 // wxDataViewListStore
@@ -2485,8 +2498,7 @@ wxDataViewTreeStoreNode::wxDataViewTreeStoreNode(
 
 wxDataViewTreeStoreNode::~wxDataViewTreeStoreNode()
 {
-    if (m_data)
-        delete m_data;
+    delete m_data;
 }
 
 wxDataViewTreeStoreContainerNode::wxDataViewTreeStoreContainerNode(

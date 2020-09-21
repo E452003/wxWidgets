@@ -63,7 +63,6 @@
 #include "wx/popupwin.h"
 #include "wx/power.h"
 #include "wx/scopeguard.h"
-#include "wx/stack.h"
 #include "wx/sysopt.h"
 
 #if wxUSE_DRAG_AND_DROP
@@ -81,6 +80,7 @@
 
 #include "wx/msw/private.h"
 #include "wx/msw/private/keyboard.h"
+#include "wx/msw/private/paint.h"
 #include "wx/msw/private/winstyle.h"
 #include "wx/msw/dcclient.h"
 #include "wx/msw/seh.h"
@@ -105,6 +105,7 @@
 #include "wx/notebook.h"
 #include "wx/listctrl.h"
 #include "wx/dynlib.h"
+#include "wx/display.h"
 
 #include <string.h>
 
@@ -1024,25 +1025,6 @@ void wxWindowMSW::MSWUpdateUIState(int action, int state)
     ::SendMessage(GetHwnd(), WM_CHANGEUISTATE, MAKEWPARAM(action, state), 0);
 }
 
-void wxWindowMSW::WXSetPendingFocus(wxWindow* win)
-{
-    wxWindow * const focus = FindFocus();
-
-    for ( wxWindow* parent = this; parent; parent = parent->GetParent() )
-    {
-        // We shouldn't overwrite the pending focus if the window has the focus
-        // currently, as this would make its state inconsistent. And this would
-        // be useless anyhow, as we only remember pending focus in order to
-        // restore it properly when the window gets the focus back -- which is
-        // unnecessary if it has the focus already.
-        if ( !parent->IsDescendant(focus) )
-            parent->WXDoUpdatePendingFocus(win);
-
-        if ( parent->IsTopLevel() )
-            break;
-    }
-}
-
 // ---------------------------------------------------------------------------
 // scrolling stuff
 // ---------------------------------------------------------------------------
@@ -1746,6 +1728,8 @@ void wxWindowMSW::Update()
 // drag and drop
 // ---------------------------------------------------------------------------
 
+#if wxUSE_DRAG_AND_DROP
+
 #if wxUSE_STATBOX
 
 // we need to lower the sibling static boxes so controls contained within can be
@@ -1776,8 +1760,6 @@ static inline void AdjustStaticBoxZOrder(wxWindow * WXUNUSED(parent))
 }
 
 #endif // wxUSE_STATBOX/!wxUSE_STATBOX
-
-#if wxUSE_DRAG_AND_DROP
 
 void wxWindowMSW::SetDropTarget(wxDropTarget *pDropTarget)
 {
@@ -2695,7 +2677,9 @@ bool wxWindowMSW::MSWProcessMessage(WXMSG* pMsg)
             return true;
         }
     }
-#endif // __WXUNIVERSAL__
+#else // __WXUNIVERSAL__
+    wxUnusedVar(pMsg);
+#endif // !__WXUNIVERSAL__/__WXUNIVERSAL__
 
 #if wxUSE_TOOLTIPS
     if ( m_tooltip )
@@ -2968,6 +2952,33 @@ wxWindowMSW::MSWHandleMessage(WXLRESULT *result,
 
     // for most messages we should return 0 when we do process the message
     rc.result = 0;
+
+    // Special hook for dismissing the current popup if it's active. It's a bit
+    // ugly to have to do this here, but the only alternatives seem to be
+    // installing a WH_CBT hook in wxPopupTransientWindow code, which is not
+    // really much better.
+#if wxUSE_POPUPWIN
+    // Note that we let the popup window, or its child, have the event if it
+    // happens inside it -- it's supposed to react to it and we don't want to
+    // dismiss it before it can do it.
+    if ( wxCurrentPopupWindow && !wxCurrentPopupWindow->IsDescendant(this) )
+    {
+        switch ( message )
+        {
+            case WM_NCLBUTTONDOWN:
+            case WM_NCRBUTTONDOWN:
+            case WM_NCMBUTTONDOWN:
+
+            case WM_LBUTTONDOWN:
+            case WM_RBUTTONDOWN:
+            case WM_MBUTTONDOWN:
+
+            case WM_SETFOCUS:
+            case WM_KILLFOCUS:
+                wxCurrentPopupWindow->MSWDismissUnfocusedPopup();
+        }
+    }
+#endif // wxUSE_POPUPWIN
 
     switch ( message )
     {
@@ -3636,8 +3647,6 @@ wxWindowMSW::MSWHandleMessage(WXLRESULT *result,
                 // the event may be handled by a parent window
                 wxPoint pt(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 
-                wxContextMenuEvent evtCtx(wxEVT_CONTEXT_MENU, GetId(), pt);
-
                 // we could have got an event from our child, reflect it back
                 // to it if this is the case
                 wxWindowMSW *win = NULL;
@@ -3650,8 +3659,7 @@ wxWindowMSW::MSWHandleMessage(WXLRESULT *result,
                 if ( !win )
                     win = this;
 
-                evtCtx.SetEventObject(win);
-                processed = win->HandleWindowEvent(evtCtx);
+                processed = win->WXSendContextMenuEvent(pt);
 
                 if ( !processed )
                 {
@@ -3716,6 +3724,7 @@ wxWindowMSW::MSWHandleMessage(WXLRESULT *result,
             }
             break;
 
+#if wxUSE_POPUPWIN
         case WM_NCACTIVATE:
             // When we're losing activation to our own popup window, we want to
             // retain the "active" appearance of the title bar, as dropping
@@ -3732,6 +3741,7 @@ wxWindowMSW::MSWHandleMessage(WXLRESULT *result,
                 processed = true;
             }
             break;
+#endif
 
 #if wxUSE_UXTHEME
         // If we want the default themed border then we need to draw it ourselves
@@ -4830,7 +4840,7 @@ wxSize wxWindowMSW::GetDPI() const
 
     if ( hwnd == NULL )
     {
-        const wxWindow* topWin = wxGetTopLevelParent(const_cast<wxWindow*>(this));
+        const wxWindow* topWin = wxGetTopLevelParent(const_cast<wxWindowMSW*>(this));
         if ( topWin )
         {
             hwnd = GetHwndOf(topWin);
@@ -4847,6 +4857,16 @@ wxSize wxWindowMSW::GetDPI() const
     }
 
     return dpi;
+}
+
+double wxWindowMSW::GetDPIScaleFactor() const
+{
+    return GetDPI().y / (double)wxDisplay::GetStdPPIValue();
+}
+
+void wxWindowMSW::WXAdjustFontToOwnPPI(wxFont& font) const
+{
+    font.WXAdjustToPPI(GetDPI());
 }
 
 void wxWindowMSW::MSWUpdateFontOnDPIChange(const wxSize& newDPI)
@@ -4871,6 +4891,45 @@ static void ScaleCoordIfSet(int& coord, float scaleFactor)
     }
 }
 
+// Called from MSWUpdateonDPIChange() to recursively update the window
+// sizer and any child sizers and spacers.
+static void UpdateSizerOnDPIChange(wxSizer* sizer, float scaleFactor)
+{
+    if ( !sizer )
+    {
+        return;
+    }
+
+    for ( wxSizerItemList::compatibility_iterator
+            node = sizer->GetChildren().GetFirst();
+            node;
+            node = node->GetNext() )
+    {
+        wxSizerItem* sizerItem = node->GetData();
+
+        int border = sizerItem->GetBorder();
+        ScaleCoordIfSet(border, scaleFactor);
+        sizerItem->SetBorder(border);
+
+        // only scale sizers and spacers, not windows
+        if ( sizerItem->IsSizer() || sizerItem->IsSpacer() )
+        {
+            wxSize min = sizerItem->GetMinSize();
+            ScaleCoordIfSet(min.x, scaleFactor);
+            ScaleCoordIfSet(min.y, scaleFactor);
+            sizerItem->SetMinSize(min);
+
+            wxSize size = sizerItem->GetSize();
+            ScaleCoordIfSet(size.x, scaleFactor);
+            ScaleCoordIfSet(size.y, scaleFactor);
+            sizerItem->SetDimension(wxDefaultPosition, size);
+
+            // Update any child sizers if this is a sizer
+            UpdateSizerOnDPIChange(sizerItem->GetSizer(), scaleFactor);
+        }
+    }
+}
+
 void
 wxWindowMSW::MSWUpdateOnDPIChange(const wxSize& oldDPI, const wxSize& newDPI)
 {
@@ -4888,34 +4947,7 @@ wxWindowMSW::MSWUpdateOnDPIChange(const wxSize& oldDPI, const wxSize& newDPI)
     MSWUpdateFontOnDPIChange(newDPI);
 
     // update sizers
-    if ( GetSizer() )
-    {
-        for ( wxSizerItemList::compatibility_iterator
-              node = GetSizer()->GetChildren().GetFirst();
-              node;
-              node = node->GetNext() )
-        {
-            wxSizerItem* sizerItem = node->GetData();
-
-            int border = sizerItem->GetBorder();
-            ScaleCoordIfSet(border, scaleFactor);
-            sizerItem->SetBorder(border);
-
-            // only scale sizers and spacers, not windows
-            if ( sizerItem->IsSizer() || sizerItem->IsSpacer() )
-            {
-                wxSize min = sizerItem->GetMinSize();
-                ScaleCoordIfSet(min.x, scaleFactor);
-                ScaleCoordIfSet(min.y, scaleFactor);
-                sizerItem->SetMinSize(min);
-
-                wxSize size = sizerItem->GetSize();
-                ScaleCoordIfSet(size.x, scaleFactor);
-                ScaleCoordIfSet(size.y, scaleFactor);
-                sizerItem->SetDimension(wxDefaultPosition, size);
-            }
-        }
-    }
+    UpdateSizerOnDPIChange(GetSizer(), scaleFactor);
 
     // update children
     for ( wxWindowList::compatibility_iterator node = GetChildren().GetFirst();
@@ -5262,8 +5294,7 @@ wxColour wxWindowMSW::MSWGetThemeColour(const wchar_t *themeName,
 // endless stream of WM_PAINT messages for this window resulting in a lot of
 // difficult to debug problems (e.g. impossibility to repaint other windows,
 // lack of timer and idle events and so on)
-extern wxStack<bool> wxDidCreatePaintDC;
-wxStack<bool> wxDidCreatePaintDC;
+wxStack<wxMSWImpl::PaintData> wxMSWImpl::paintStack;
 
 bool wxWindowMSW::HandlePaint()
 {
@@ -5279,14 +5310,16 @@ bool wxWindowMSW::HandlePaint()
 
     m_updateRegion = wxRegion((WXHRGN) hRegion);
 
-    wxDidCreatePaintDC.push(false);
+    using namespace wxMSWImpl;
 
-    wxPaintEvent event(m_windowId);
-    event.SetEventObject(this);
+    paintStack.push(PaintData(this));
+
+    wxPaintEvent event(this);
 
     bool processed = HandleWindowEvent(event);
 
-    if ( wxDidCreatePaintDC.top() && !processed )
+    const bool createdPaintDC = paintStack.top().createdPaintDC;
+    if ( createdPaintDC && !processed )
     {
         // Event handler did paint something as wxPaintDC object was created
         // but then it must have skipped the event to indicate that default
@@ -5300,8 +5333,7 @@ bool wxWindowMSW::HandlePaint()
     // note that we must generate NC event after the normal one as otherwise
     // BeginPaint() will happily overwrite our decorations with the background
     // colour
-    wxNcPaintEvent eventNc(m_windowId);
-    eventNc.SetEventObject(this);
+    wxNcPaintEvent eventNc(this);
     HandleWindowEvent(eventNc);
 
     // don't keep an HRGN we don't need any longer (GetUpdateRegion() can only
@@ -5310,16 +5342,16 @@ bool wxWindowMSW::HandlePaint()
 
     wxPaintDCImpl::EndPaint((wxWindow *)this);
 
+    paintStack.pop();
+
     // It doesn't matter whether the event was actually processed or not here,
     // what matters is whether we already painted, and hence validated, the
     // window or not. If we did, either the event was processed or we called
     // OnPaint() above, so we should return true. If we did not, even the event
     // was processed, we must still call MSWDefWindowProc() to ensure that the
     // window is validated, i.e. to avoid the problem described in the comment
-    // before wxDidCreatePaintDC definition above.
-    const bool ret = wxDidCreatePaintDC.top();
-    wxDidCreatePaintDC.pop();
-    return ret;
+    // before paintStack definition above.
+    return createdPaintDC;
 }
 
 // Can be called from an application's OnPaint handler

@@ -91,7 +91,7 @@ typedef int wxEventType;
     wxEventTableEntry(type, winid, idLast, wxNewEventTableFunctor(type, fn), obj)
 
 #define wxDECLARE_EVENT_TABLE_TERMINATOR() \
-    wxEventTableEntry(wxEVT_NULL, 0, 0, 0, 0)
+    wxEventTableEntry(wxEVT_NULL, 0, 0, NULL, NULL)
 
 // generate a new unique event type
 extern WXDLLIMPEXP_BASE wxEventType wxNewEventType();
@@ -144,9 +144,43 @@ inline wxEventFunction wxEventFunctionCast(void (wxEvtHandler::*func)(T&))
     wxGCC_WARNING_RESTORE_CAST_FUNCTION_TYPE()
 }
 
+// Special hack to remove "noexcept" from the function type when using C++17 or
+// later: static_cast<> below would fail to cast a member function pointer to a
+// member of a derived class to the base class if noexcept is specified for the
+// former, so remove it first if necessary.
+#if __cplusplus >= 201703L
+
+namespace wxPrivate
+{
+
+// Generic template version, doing nothing.
+template <typename T>
+struct RemoveNoexceptEventHandler
+{
+    using type = T;
+};
+
+// Specialization removing noexcept when it's specified.
+//
+// Note that this doesn't pretend to be generally suitable, this is just enough
+// to work in our particular case.
+template <typename R, typename C, typename E>
+struct RemoveNoexceptEventHandler<R (C::*)(E&) noexcept>
+{
+    using type = R (C::*)(E&);
+};
+
+} // namespace wxPrivate
+
+#define wxREMOVE_NOEXCEPT_EVENT_HANDLER(pmf) \
+    static_cast<wxPrivate::RemoveNoexceptEventHandler<decltype(pmf)>::type>(pmf)
+#else
+#define wxREMOVE_NOEXCEPT_EVENT_HANDLER(pmf) pmf
+#endif
+
 // Try to cast the given event handler to the correct handler type:
 #define wxEVENT_HANDLER_CAST( functype, func ) \
-    wxEventFunctionCast(static_cast<functype>(&func))
+    wxEventFunctionCast(static_cast<functype>(wxREMOVE_NOEXCEPT_EVENT_HANDLER(&func)))
 
 
 // The tag is a type associated to the event type (which is an integer itself,
@@ -2156,7 +2190,7 @@ public:
             *ypos = GetY();
     }
 
-    // This version if provided only for backwards compatiblity, don't use.
+    // This version if provided only for backwards compatibility, don't use.
     void GetPosition(long *xpos, long *ypos) const
     {
         if (xpos)
@@ -2335,39 +2369,17 @@ private:
  wxEVT_NC_PAINT
  */
 
-#if wxDEBUG_LEVEL && defined(__WXMSW__)
-    #define wxHAS_PAINT_DEBUG
-
-    // see comments in src/msw/dcclient.cpp where g_isPainting is defined
-    extern WXDLLIMPEXP_CORE int g_isPainting;
-#endif // debug
-
 class WXDLLIMPEXP_CORE wxPaintEvent : public wxEvent
 {
+    // This ctor is only intended to be used by wxWidgets itself, so it's
+    // intentionally declared as private when not building the library itself.
+#ifdef WXBUILDING
 public:
-    wxPaintEvent(int Id = 0)
-        : wxEvent(Id, wxEVT_PAINT)
-    {
-#ifdef wxHAS_PAINT_DEBUG
-        // set the internal flag for the duration of redrawing
-        g_isPainting++;
-#endif // debug
-    }
+#endif // WXBUILDING
+    explicit wxPaintEvent(wxWindowBase* window = NULL);
 
-    // default copy ctor and dtor are normally fine, we only need them to keep
-    // g_isPainting updated in debug build
-#ifdef wxHAS_PAINT_DEBUG
-    wxPaintEvent(const wxPaintEvent& event)
-            : wxEvent(event)
-    {
-        g_isPainting++;
-    }
-
-    virtual ~wxPaintEvent()
-    {
-        g_isPainting--;
-    }
-#endif // debug
+public:
+    // default copy ctor and dtor are fine
 
     virtual wxEvent *Clone() const wxOVERRIDE { return new wxPaintEvent(*this); }
 
@@ -2377,11 +2389,14 @@ private:
 
 class WXDLLIMPEXP_CORE wxNcPaintEvent : public wxEvent
 {
+    // This ctor is only intended to be used by wxWidgets itself, so it's
+    // intentionally declared as private when not building the library itself.
+#ifdef WXBUILDING
 public:
-    wxNcPaintEvent(int winid = 0)
-        : wxEvent(winid, wxEVT_NC_PAINT)
-        { }
+#endif // WXBUILDING
+    explicit wxNcPaintEvent(wxWindowBase* window = NULL);
 
+public:
     virtual wxEvent *Clone() const wxOVERRIDE { return new wxNcPaintEvent(*this); }
 
 private:
@@ -2877,6 +2892,7 @@ public:
         m_setShown =
         m_setText =
         m_setChecked = false;
+        m_isCheckable = true;
     }
     wxUpdateUIEvent(const wxUpdateUIEvent& event)
         : wxCommandEvent(event),
@@ -2887,6 +2903,7 @@ public:
           m_setShown(event.m_setShown),
           m_setText(event.m_setText),
           m_setChecked(event.m_setChecked),
+          m_isCheckable(event.m_isCheckable),
           m_text(event.m_text)
     { }
 
@@ -2903,6 +2920,10 @@ public:
     void Enable(bool enable) { m_enabled = enable; m_setEnabled = true; }
     void Show(bool show) { m_shown = show; m_setShown = true; }
     void SetText(const wxString& text) { m_text = text; m_setText = true; }
+
+    // A flag saying if the item can be checked. True by default.
+    bool IsCheckable() const { return m_isCheckable; }
+    void DisallowCheck() { m_isCheckable = false; }
 
     // Sets the interval between updates in milliseconds.
     // Set to -1 to disable updates, or to 0 to update as frequently as possible.
@@ -2936,6 +2957,7 @@ protected:
     bool          m_setShown;
     bool          m_setText;
     bool          m_setChecked;
+    bool          m_isCheckable;
     wxString      m_text;
 #if wxUSE_LONGLONG
     static wxLongLong       sm_lastUpdate;
@@ -4258,10 +4280,10 @@ typedef void (wxEvtHandler::*wxPressAndTapEventFunction)(wxPressAndTapEvent&);
     private:                                                            \
         static const wxEventTableEntry sm_eventTableEntries[];          \
     protected:                                                          \
-        wxCLANG_WARNING_SUPPRESS(inconsistent-missing-override)         \
+        wxWARNING_SUPPRESS_MISSING_OVERRIDE()                           \
         const wxEventTable* GetEventTable() const;                      \
         wxEventHashTable& GetEventHashTable() const;                    \
-        wxCLANG_WARNING_RESTORE(inconsistent-missing-override)          \
+        wxWARNING_RESTORE_MISSING_OVERRIDE()                            \
         static const wxEventTable        sm_eventTable;                 \
         static wxEventHashTable          sm_eventHashTable
 

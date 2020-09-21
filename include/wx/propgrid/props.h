@@ -575,7 +575,7 @@ protected:
 class WXDLLIMPEXP_PROPGRID wxEditorDialogProperty : public wxPGProperty
 {
     friend class wxPGDialogAdapter;
-    wxDECLARE_ABSTRACT_CLASS(wxDialogProperty);
+    wxDECLARE_ABSTRACT_CLASS(wxEditorDialogProperty);
 
 public:
     virtual ~wxEditorDialogProperty();
@@ -594,7 +594,7 @@ protected:
 
 // -----------------------------------------------------------------------
 
-// Indicates first bit useable by derived properties.
+// Indicates first bit usable by derived properties.
 #define wxPG_PROP_SHOW_FULL_FILENAME  wxPG_PROP_CLASS_SPECIFIC_1
 
 // Like wxLongStringProperty, but the button triggers file selector instead.
